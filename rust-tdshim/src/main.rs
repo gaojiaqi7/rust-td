@@ -157,7 +157,14 @@ pub extern "win64" fn _start(
 
     // TBD: change hardcode value
     mp::mp_accept_memory_resource_range(0x800000, memory_top - 0x800000);
-    let memory_bottom = memory_top - TD_PAYLOAD_HOB_SIZE as u64 - TD_PAYLOAD_STACK_SIZE as u64;
+    let memory_bottom = memory_top
+        - TD_PAYLOAD_HOB_SIZE as u64
+        - TD_PAYLOAD_STACK_SIZE as u64
+        - TD_PAYLOAD_EVENT_LOG_SIZE as u64
+        - TD_PAYLOAD_HEAP_SIZE as u64;
+    let td_payload_hob_base = memory_top - (TD_PAYLOAD_HOB_SIZE + TD_PAYLOAD_EVENT_LOG_SIZE) as u64;
+    let td_payload_stack_base = memory_top
+        - (TD_PAYLOAD_HOB_SIZE + TD_PAYLOAD_EVENT_LOG_SIZE + TD_PAYLOAD_STACK_SIZE) as u64;
 
     heap::init();
     paging::init();
@@ -188,7 +195,7 @@ pub extern "win64" fn _start(
             + ipl::efi_page_to_size(ipl::efi_size_to_page(
                 core::mem::size_of::<HobTemplate>() as u64
             )),
-        efi_end_of_hob_list: memory_bottom + core::mem::size_of::<HobTemplate>() as u64,
+        efi_end_of_hob_list: td_payload_hob_base + core::mem::size_of::<HobTemplate>() as u64,
     };
 
     let cpu = hob::Cpu {
@@ -228,8 +235,8 @@ pub extern "win64" fn _start(
         },
         alloc_descriptor: hob::MemoryAllocationHeader {
             name: *MEMORY_ALLOCATION_STACK_GUID.as_bytes(),
-            memory_base_address: memory_bottom as u64,
-            memory_length: (TD_PAYLOAD_HOB_SIZE + TD_PAYLOAD_STACK_SIZE) as u64,
+            memory_base_address: td_payload_stack_base as u64,
+            memory_length: TD_PAYLOAD_STACK_SIZE as u64,
             memory_type: efi::MemoryType::BootServicesData as u32,
             reserved: [0u8; 4],
         },
@@ -361,18 +368,22 @@ pub extern "win64" fn _start(
             reserved: 0,
         },
     };
+
+    let hob_slice = memslice::get_dynamic_mem_slice_mut(
+        SliceType::TdPayloadHobSlice,
+        td_payload_hob_base as usize,
+    );
+    let _res = hob_slice.pwrite(hob_template, 0);
+
+    let stack_top = (td_payload_stack_base + TD_PAYLOAD_STACK_SIZE as u64) as usize;
     log::info!(
         " start launching payload {:p} and switch stack {:p}...\n",
         entry as *const usize,
-        (memory_top as usize - 0x10) as *const usize
+        stack_top as *const usize
     );
 
-    let hob = memory_bottom;
-    let hob_slice = memslice::get_dynamic_mem_slice_mut(SliceType::TdPayloadHobSlice, hob as usize);
-    let _res = hob_slice.pwrite(hob_template, 0);
-
     unsafe {
-        switch_stack_call(entry, memory_top as usize - 0x10, hob as usize, 0);
+        switch_stack_call(entry, stack_top, td_payload_hob_base as usize, 0);
     }
 
     loop {}
