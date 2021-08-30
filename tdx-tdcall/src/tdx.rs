@@ -102,11 +102,45 @@ pub fn tdvmcall_io_read_8(port: u16) -> u8 {
     val as u8
 }
 
+pub fn tdvmcall_io_read_32(port: u16) -> u32 {
+    let mut val: u64 = 0;
+    let ret = unsafe {
+        td_vm_call(
+            TDVMCALL_IO,
+            core::mem::size_of::<u32>() as u64,
+            IO_READ,
+            port as u64,
+            0,
+            &mut val as *mut u64 as *mut core::ffi::c_void,
+        )
+    };
+    if ret != TDVMCALL_STATUS_SUCCESS {
+        tdvmcall_halt();
+    }
+    val as u32
+}
+
 pub fn tdvmcall_io_write_8(port: u16, byte: u8) {
     let ret = unsafe {
         td_vm_call(
             TDVMCALL_IO,
             core::mem::size_of::<u8>() as u64,
+            IO_WRITE,
+            port as u64,
+            byte as u64,
+            core::ptr::null_mut(),
+        )
+    };
+    if ret != TDVMCALL_STATUS_SUCCESS {
+        tdvmcall_halt();
+    }
+}
+
+pub fn tdvmcall_io_write_32(port: u16, byte: u32) {
+    let ret = unsafe {
+        td_vm_call(
+            TDVMCALL_IO,
+            core::mem::size_of::<u32>() as u64,
             IO_WRITE,
             port as u64,
             byte as u64,

@@ -344,7 +344,12 @@ interrupt_no_error!(virtualization, stack, {
             return;
         }
         0xED => {
-            log::info!("<IN EAX, DX>")
+            log::info!("<IN EAX, DX>");
+            let al = tdx::tdvmcall_io_read_32((stack.scratch.rdx & 0xFFFF) as u16);
+            stack.scratch.rax = (stack.scratch.rax & 0xFFFF_FFFF_0000_0000_usize) | al as usize;
+            stack.iret.rip += 1;
+            log::info!("Fault done\n");
+            return;
         }
         // OUT
         0xE6 => {
@@ -364,7 +369,14 @@ interrupt_no_error!(virtualization, stack, {
             return;
         }
         0xEF => {
-            log::info!("<OUT DX, EAX>")
+            log::info!("<OUT DX, EAX>");
+            tdx::tdvmcall_io_write_32(
+                (stack.scratch.rdx & 0xFFFF) as u16,
+                (stack.scratch.rax & 0xFFFFFFFF) as u32,
+            );
+            stack.iret.rip += 1;
+            log::info!("Fault done\n");
+            return;
         }
         // Unknown
         _ => {}
