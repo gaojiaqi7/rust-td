@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 
+use core::sync::atomic::{fence, Ordering};
+
 extern "win64" {
     fn td_call(Leaf: u64, P1: u64, P2: u64, P3: u64, Results: u64) -> u64;
     fn td_vm_call(
@@ -27,7 +29,7 @@ const TDVMCALL_HALT: u64 = 0x0000c;
 const TDVMCALL_IO: u64 = 0x0001e;
 // const TDVMCALL_RDMSR: u64 = 0x0001f;
 // const TDVMCALL_WRMSR: u64 = 0x00020;
-// const TDVMCALL_MMIO: u64 = 0x00030;
+const TDVMCALL_MMIO: u64 = 0x00030;
 
 const IO_READ: u64 = 0;
 const IO_WRITE: u64 = 1;
@@ -190,4 +192,41 @@ pub fn tdcall_accept_page(address: u64) {
             tdvmcall_halt();
         }
     }
+}
+
+pub fn tdvmcall_mmio_write<T: Sized>(address: *const T, value: T) {
+    fence(Ordering::SeqCst);
+    let ret = unsafe {
+        let val = *(&value as *const T as *const u64);
+        td_vm_call(
+            TDVMCALL_MMIO,
+            core::mem::size_of::<T>() as u64,
+            IO_WRITE,
+            address as u64,
+            val,
+            core::ptr::null_mut(),
+        )
+    };
+    if ret != TDVMCALL_STATUS_SUCCESS {
+        tdvmcall_halt();
+    }
+}
+
+pub fn tdvmcall_mmio_read<T: Clone + Copy + Sized>(address: usize) -> T {
+    let mut val = 0u64;
+    fence(Ordering::SeqCst);
+    let ret = unsafe {
+        td_vm_call(
+            TDVMCALL_MMIO,
+            core::mem::size_of::<T>() as u64,
+            IO_READ,
+            address as u64,
+            0,
+            &mut val as *mut u64 as *mut core::ffi::c_void,
+        )
+    };
+    if ret != TDVMCALL_STATUS_SUCCESS {
+        tdvmcall_halt();
+    }
+    unsafe { *(&val as *const u64 as *const T) }
 }
