@@ -46,7 +46,7 @@ td_call:
        jnz exit
 
        # test if caller wanted results
-       movq  first_variable_on_stack_offset(%rbp), %r12
+       movq  first_variable_on_stack_offset(%rsp), %r12
        testq %r12, %r12
        jz exit
        movq %rcx, 0(%r12)
@@ -54,7 +54,7 @@ td_call:
        movq %r8,  16(%r12)
        movq %r9,  24(%r12)
        movq %r10, 32(%r12)
-       movq %r11, 408(%r12)
+       movq %r11, 40(%r12)
 exit:
         # tdcall_pop_regs
         popq %rdi
