@@ -28,6 +28,7 @@ use uefi_pi::pi::hob_lib;
 
 use rust_td_layout::build_time::*;
 use rust_td_layout::runtime::*;
+use rust_td_layout::RuntimeMemoryLayout;
 
 use core::panic::PanicInfo;
 
@@ -157,14 +158,12 @@ pub extern "win64" fn _start(
 
     // TBD: change hardcode value
     mp::mp_accept_memory_resource_range(0x800000, memory_top - 0x800000);
-    let memory_bottom = memory_top
-        - TD_PAYLOAD_HOB_SIZE as u64
-        - TD_PAYLOAD_STACK_SIZE as u64
-        - TD_PAYLOAD_EVENT_LOG_SIZE as u64
-        - TD_PAYLOAD_HEAP_SIZE as u64;
-    let td_payload_hob_base = memory_top - (TD_PAYLOAD_HOB_SIZE + TD_PAYLOAD_EVENT_LOG_SIZE) as u64;
-    let td_payload_stack_base = memory_top
-        - (TD_PAYLOAD_HOB_SIZE + TD_PAYLOAD_EVENT_LOG_SIZE + TD_PAYLOAD_STACK_SIZE) as u64;
+
+    let runtime_memorey_layout = RuntimeMemoryLayout::new(memory_top);
+
+    let memory_bottom = runtime_memorey_layout.runtime_memory_bottom;
+    let td_payload_hob_base = runtime_memorey_layout.runtime_hob_base;
+    let td_payload_stack_base = runtime_memorey_layout.runtime_stack_base;
 
     heap::init();
     paging::init();
