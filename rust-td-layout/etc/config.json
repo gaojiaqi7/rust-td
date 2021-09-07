@@ -50,6 +50,8 @@
                 |    PAYLOAD   |     (payload_size)
                 +--------------+
                 |   ........   |
+                +--------------+ <-  dma_base - 0x7D000000 (16M)
+                |     DMA      |     (dma_size)
                 +--------------+ <-  heap_base - 0x7E000000 (16M)
                 |     HEAP     |     (heap_size)
                 +--------------+ <-  stack_base - 0x7F000000 (8M)
@@ -67,5 +69,6 @@
         "payload_base": 0x1000000,
         "payload_size": 0x2000000,
         "page_table_base": 0x800000,
+        "dma_size": 0x1000000,
     }
 }

@@ -101,6 +101,8 @@ macro_rules! RUNTIME_TEMPLATE {
                     |    PAYLOAD   |    ({payload_size:#010X})
                     +--------------+
                     |   ........   |
+                    +--------------+ <-  {dma_base:#010X}
+                    |     DMA      |    ({dma_size:#010X})
                     +--------------+ <-  {heap_base:#010X}
                     |     HEAP     |    ({heap_size:#010X})
                     +--------------+ <-  {stack_base:#010X}
@@ -116,6 +118,7 @@ pub const TD_PAYLOAD_EVENT_LOG_SIZE: u32 = {event_log_size:#X};
 pub const TD_PAYLOAD_HOB_SIZE: u32 = {hob_size:#X};
 pub const TD_PAYLOAD_STACK_SIZE: u32 = {stack_size:#X};
 pub const TD_PAYLOAD_HEAP_SIZE: usize = {heap_size:#X};
+pub const TD_PAYLOAD_DMA_SIZE: usize = {dma_size:#X};
 
 pub const TD_PAYLOAD_BASE: u64 = {payload_base:#X};
 pub const TD_PAYLOAD_SIZE: usize = {payload_size:#X};
@@ -153,6 +156,7 @@ struct TdRuntimeLayoutConfig {
     payload_base: u32,
     payload_size: u32,
     page_table_base: u32,
+    dma_size: u32,
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -224,6 +228,8 @@ impl TdLayout {
             pt_base = self.runtime.pt_base,
             payload_base = self.runtime.payload_base,
             payload_size = self.runtime.payload_size,
+            dma_base = self.runtime.dma_base,
+            dma_size = self.runtime.dma_size,
             heap_base = self.runtime.heap_base,
             heap_size = self.runtime.heap_size,
             stack_base = self.runtime.stack_base,
@@ -345,6 +351,8 @@ struct TdLayoutRuntime {
     pt_base: u32,
     payload_base: u32,
     payload_size: u32,
+    dma_base: u32,
+    dma_size: u32,
     heap_base: u32,
     heap_size: u32,
     stack_base: u32,
@@ -361,11 +369,14 @@ impl TdLayoutRuntime {
         let hob_base = event_log_base - config.runtime_layout.hob_size;
         let stack_base = hob_base - config.runtime_layout.stack_size;
         let heap_base = stack_base - config.runtime_layout.heap_size;
+        let dma_base = heap_base - config.runtime_layout.dma_size;
 
         TdLayoutRuntime {
             pt_base: config.runtime_layout.page_table_base,
             payload_base: config.runtime_layout.payload_base,
             payload_size: config.runtime_layout.payload_size,
+            dma_base,
+            dma_size: config.runtime_layout.dma_size,
             heap_base,
             heap_size: config.runtime_layout.heap_size,
             stack_base,

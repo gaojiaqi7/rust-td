@@ -30,6 +30,7 @@ rust-td-layout = { path = "../rust-td-layout" }
 paging = { path = "../rust-paging" }
 ring = { git = "https://github.com/jyao1/ring.git", branch = "uefi_support", default-features = false }
 scroll = { version = "0.10", default-features = false, features = ["derive"] }
+x86_64 = "0.14.4"
 
 [dependencies.lazy_static]
 version = "1.0"
