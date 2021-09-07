@@ -7,9 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-scroll = { version = "0.10", default-features = false }
+scroll = { version = "0.10", default-features = false, features = ["derive"]  }
+log = "0.4.13"
 
 [build-dependencies]
 json5 = "0.3.0"
 serde = { version = "1.0", features = ["derive"] }
-scroll = { version = "0.10", default-features = false }
+scroll = { version = "0.10", default-features = false, features = ["derive"] }
