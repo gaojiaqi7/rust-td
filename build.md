@@ -4,7 +4,7 @@
 
 1. Install [RUST](https://www.rust-lang.org/)
 
-please use nightly-2020-11-09.
+please use nightly-2021-08-20.
 
 1.1. Intall xbuild
 

@@ -168,7 +168,8 @@ impl InterruptErrorStack {
 #[macro_export]
 macro_rules! interrupt_no_error {
     ($name:ident, $stack: ident, $func:block) => {
-        #[naked]
+        // Ignore the warning and comment temporarily
+        // #[naked]
         #[no_mangle]
         pub unsafe extern fn $name () {
             #[inline(never)]
@@ -201,7 +202,8 @@ macro_rules! interrupt_no_error {
 #[macro_export]
 macro_rules! interrupt_error {
     ($name:ident, $stack:ident, $func:block) => {
-        #[naked]
+        // Ignore the warning and comment temporarily
+        // #[naked]
         #[no_mangle]
         pub unsafe extern fn $name () {
             #[inline(never)]
