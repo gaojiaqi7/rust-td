@@ -9,6 +9,7 @@
 
 mod heap;
 mod ipl;
+mod memory;
 mod memslice;
 mod mp;
 mod tcg;
@@ -252,7 +253,7 @@ pub extern "win64" fn _start(
     );
 
     let memory_size = ipl::get_memory_size(hob_list);
-    paging::setup_paging(TD_PAYLOAD_PAGE_TABLE_BASE, memory_size);
+    memory::setup_paging(&runtime_memorey_layout, memory_size);
 
     let page_table = hob::MemoryAllocation {
         header: hob::Header {
