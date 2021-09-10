@@ -5,21 +5,23 @@
 use core::cmp::min;
 use log::*;
 use x86_64::{
-    // align_down, align_up,
-    // registers::control::{Cr3, Cr3Flags},
-    // structures::paging::page_table::PageTableEntry,
     structures::paging::PageTableFlags as Flags,
     structures::paging::{
         Mapper, OffsetPageTable, Page, PageSize, PhysFrame, Size1GiB, Size2MiB, Size4KiB,
     },
-    PhysAddr,
-    VirtAddr,
+    PhysAddr, VirtAddr,
 };
 
 use super::frame::{BMFrameAllocator, FRAME_ALLOCATOR};
 use crate::TD_PAYLOAD_PAGE_TABLE_BASE;
 
-pub fn create_mapping(pt: &mut OffsetPageTable, mut pa: PhysAddr, mut va: VirtAddr, mut sz: u64) {
+pub fn create_mapping_with_flags(
+    pt: &mut OffsetPageTable,
+    mut pa: PhysAddr,
+    mut va: VirtAddr,
+    mut sz: u64,
+    flags: Flags,
+) {
     // const ALIGN_4K_BITS: u64 = 12;
     // const ALIGN_4K: u64 = 4096;
     const ALIGN_2M_BITS: u64 = 21;
@@ -43,7 +45,6 @@ pub fn create_mapping(pt: &mut OffsetPageTable, mut pa: PhysAddr, mut va: VirtAd
             type S = Size1GiB;
             let page: Page<S> = Page::containing_address(va);
             let frame: PhysFrame<S> = PhysFrame::containing_address(pa);
-            let flags = Flags::PRESENT | Flags::WRITABLE;
             unsafe {
                 pt.map_to(page, frame, flags, allocator)
                     .expect("map_to failed")
@@ -61,7 +62,6 @@ pub fn create_mapping(pt: &mut OffsetPageTable, mut pa: PhysAddr, mut va: VirtAd
             type S = Size2MiB;
             let page: Page<S> = Page::containing_address(va);
             let frame: PhysFrame<S> = PhysFrame::containing_address(pa);
-            let flags = Flags::PRESENT | Flags::WRITABLE;
             unsafe {
                 pt.map_to(page, frame, flags, allocator)
                     .expect("map_to failed")
@@ -79,7 +79,6 @@ pub fn create_mapping(pt: &mut OffsetPageTable, mut pa: PhysAddr, mut va: VirtAd
             type S = Size4KiB;
             let page: Page<S> = Page::containing_address(va);
             let frame: PhysFrame<S> = PhysFrame::containing_address(pa);
-            let flags = Flags::PRESENT | Flags::WRITABLE;
             unsafe {
                 pt.map_to(page, frame, flags, allocator)
                     .expect("map_to failed")
@@ -91,6 +90,11 @@ pub fn create_mapping(pt: &mut OffsetPageTable, mut pa: PhysAddr, mut va: VirtAd
         pa += mapped_size;
         va += mapped_size;
     }
+}
+
+pub fn create_mapping(pt: &mut OffsetPageTable, pa: PhysAddr, va: VirtAddr, sz: u64) {
+    let flags = Flags::PRESENT | Flags::WRITABLE;
+    create_mapping_with_flags(pt, pa, va, sz, flags)
 }
 
 pub fn cr3_write() {

@@ -6,7 +6,6 @@
 mod consts;
 mod frame;
 pub mod paging;
-
 pub use consts::*;
 
 use x86_64::{
