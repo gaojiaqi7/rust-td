@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 
 use core::sync::atomic::{fence, Ordering};
+use lazy_static::lazy_static;
 
 extern "win64" {
     fn td_call(Leaf: u64, P1: u64, P2: u64, P3: u64, Results: u64) -> u64;
@@ -24,6 +25,7 @@ const TDCALL_TDGETVEINFO: u64 = 3;
 // const TDCALL_TDSETCPUIDVE: u64 = 5;
 const TDCALL_TDACCEPTPAGE: u64 = 6;
 
+const TDVMCALL_MAPGPA: u64 = 0x10001;
 // const TDVMCALL_CPUID: u64 = 0x0000a;
 const TDVMCALL_HALT: u64 = 0x0000c;
 const TDVMCALL_IO: u64 = 0x0001e;
@@ -51,6 +53,10 @@ pub const EXIT_REASON_RDPMC: u32 = 15;
 
 const TDVMCALL_STATUS_SUCCESS: u64 = 0;
 
+lazy_static! {
+    static ref SHARED_MASK: u64 = td_shared_page_mask();
+}
+
 #[repr(align(64))]
 pub struct TdxDigest {
     pub data: [u8; 48],
@@ -61,6 +67,7 @@ pub struct TdCallGenericReturnData {
     pub data: [u64; 6],
 }
 
+#[derive(Debug, Default)]
 #[repr(C)]
 pub struct TdInfoReturnData {
     pub gpaw: u64,
@@ -70,6 +77,7 @@ pub struct TdInfoReturnData {
     pub rsvd: [u64; 3],
 }
 
+#[derive(Debug, Default)]
 #[repr(C)]
 pub struct TdVeInfoReturnData {
     pub exit_reason: u32,
@@ -195,6 +203,7 @@ pub fn tdcall_accept_page(address: u64) {
 }
 
 pub fn tdvmcall_mmio_write<T: Sized>(address: *const T, value: T) {
+    let address = address as u64 | *SHARED_MASK;
     fence(Ordering::SeqCst);
     let ret = unsafe {
         let val = *(&value as *const T as *const u64);
@@ -202,7 +211,7 @@ pub fn tdvmcall_mmio_write<T: Sized>(address: *const T, value: T) {
             TDVMCALL_MMIO,
             core::mem::size_of::<T>() as u64,
             IO_WRITE,
-            address as u64,
+            address,
             val,
             core::ptr::null_mut(),
         )
@@ -214,13 +223,14 @@ pub fn tdvmcall_mmio_write<T: Sized>(address: *const T, value: T) {
 
 pub fn tdvmcall_mmio_read<T: Clone + Copy + Sized>(address: usize) -> T {
     let mut val = 0u64;
+    let address = address as u64 | *SHARED_MASK;
     fence(Ordering::SeqCst);
     let ret = unsafe {
         td_vm_call(
             TDVMCALL_MMIO,
             core::mem::size_of::<T>() as u64,
             IO_READ,
-            address as u64,
+            address,
             0,
             &mut val as *mut u64 as *mut core::ffi::c_void,
         )
@@ -229,4 +239,34 @@ pub fn tdvmcall_mmio_read<T: Clone + Copy + Sized>(address: usize) -> T {
         tdvmcall_halt();
     }
     unsafe { *(&val as *const u64 as *const T) }
+}
+
+pub fn td_shared_page_mask() -> u64 {
+    let mut td_info = TdInfoReturnData::default();
+    tdcall_get_td_info(&mut td_info);
+    let gpaw = (td_info.gpaw & 0x3f) as u8;
+    assert!((gpaw == 48 || gpaw == 52));
+    1u64 << (gpaw - 1)
+}
+
+pub fn tdvmcall_mapgpa(paddress: u64, length: usize) {
+    let paddr = paddress | *SHARED_MASK;
+    let ret = unsafe {
+        td_vm_call(
+            TDVMCALL_MAPGPA,
+            paddr,
+            length as u64,
+            0,
+            0,
+            0u64 as *mut u64 as *mut core::ffi::c_void,
+        )
+    };
+    if ret != TDVMCALL_STATUS_SUCCESS {
+        tdvmcall_halt();
+    }
+    log::info!(
+        "tdvmcall mapgpa - paddr: {:x}, length: {:x}\n",
+        paddr,
+        length
+    );
 }
