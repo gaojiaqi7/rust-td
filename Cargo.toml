@@ -1,6 +1,6 @@
 [workspace]
 
-members = ["rust-tdshim", "rust-td-payload", "rust-td-tool"]
+members = ["rust-tdshim", "rust-td-payload", "rust-td-tool", "rust-quote-payload"]
 
 default-members = ["rust-tdshim", "rust-td-payload"]
 
