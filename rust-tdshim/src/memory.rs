@@ -43,25 +43,7 @@ pub fn setup_paging(layout: &RuntimeMemoryLayout, memory_end: u64) {
         &mut pt,
         PhysAddr::new(0),
         VirtAddr::new(0),
-        runtime_page_table_base,
-    );
-
-    // create runtime_page_table_base..runtime_payload_base
-    paging::paging::create_mapping_with_flags(
-        &mut pt,
-        PhysAddr::new(runtime_page_table_base),
-        VirtAddr::new(runtime_page_table_base),
-        page_table_size,
-        with_s_flags,
-    );
-    tdx_tdcall::tdx::tdvmcall_mapgpa(runtime_page_table_base, page_table_size as usize);
-
-    // runtime_paload_base..runtime_dma_base
-    paging::paging::create_mapping(
-        &mut pt,
-        PhysAddr::new(layout.runtime_payload_base),
-        VirtAddr::new(layout.runtime_payload_base),
-        layout.runtime_dma_base - layout.runtime_payload_base,
+        layout.runtime_dma_base,
     );
 
     // runtime_dma_base..runtime_heap_base

@@ -22,13 +22,6 @@ pub fn mp_accept_memory_resource_range(address: u64, size: u64) {
     let pages = PAGE_ACCEPT_CHUNK_SIZE >> 12;
 
     for i in 0..(size / PAGE_ACCEPT_CHUNK_SIZE) {
-        // TBD accept failed if remove this!
-        if (address + i * PAGE_ACCEPT_CHUNK_SIZE) % 0x800000 == 0 {
-            log::info!(
-                "accept pages 0x{:X}\n",
-                address + i * PAGE_ACCEPT_CHUNK_SIZE
-            );
-        }
         td_accept_page(address + i * PAGE_ACCEPT_CHUNK_SIZE, pages);
     }
 
