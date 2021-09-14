@@ -37,6 +37,8 @@ cargo mbuild -p rust-tdshim --release
 ### Build PE format payload
 ```
 pushd rust-quote-payload
+clang vsock_c_lib/main.c -c --target=x86_64-unknown-windows -o vsock_c_lib/main.o
+llvm-ar r main.lib vsock_c_lib/main.o
 cargo mbuild --release
 popd
 cargo run -p rust-td-tool -- target/x86_64-unknown-uefi/release/ResetVector.bin target/x86_64-unknown-uefi/release/rust-tdshim.efi target/x86_64-unknown-uefi/release/rust-quote-payload.efi target/x86_64-unknown-uefi/release/final.bin
@@ -45,6 +47,8 @@ cargo run -p rust-td-tool -- target/x86_64-unknown-uefi/release/ResetVector.bin 
 ### Build Elf format payload
 ```
 pushd rust-quote-payload
+gcc vsock_c_lib/main.c -c -fno-stack-protector -o vsock_c_lib/main.o
+ar r libmain.a vsock_c_lib/main.o
 cargo xbuild --target target.json --release
 popd
 cargo run -p rust-td-tool -- target/x86_64-unknown-uefi/release/ResetVector.bin target/x86_64-unknown-uefi/release/rust-tdshim.efi target/target/release/rust-quote-payload target/x86_64-unknown-uefi/release/final.bin
