@@ -7,6 +7,7 @@
 #![cfg_attr(not(test), no_main)]
 #![cfg_attr(test, allow(unused_imports))]
 
+extern crate alloc;
 use uefi_pi::pi::hob_lib;
 
 use rust_td_layout::runtime::*;
@@ -28,6 +29,14 @@ mod vsock_impl;
 
 mod client;
 mod server;
+
+mod vsock_lib;
+
+#[link(name = "main")]
+extern "C" {
+    fn server_entry() -> i32;
+    fn client_entry() -> i32;
+}
 
 #[cfg(not(test))]
 #[panic_handler]
@@ -57,7 +66,7 @@ fn init_heap(heap_start: usize, heap_size: usize) {
 }
 
 #[no_mangle]
-#[export_name = "efi_main"]
+#[cfg_attr(target_os = "uefi", export_name = "efi_main")]
 pub extern "win64" fn _start(hob: *const c_void) -> ! {
     let _ = tdx_logger::init();
     log::info!("Starting rust-td-payload hob - {:p}\n", hob);
@@ -95,10 +104,19 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
 
     vsock_impl::init_vsock_device();
 
-    client::test_client();
-    server::test_server();
+    // client::test_client();
+    let mut result;
+    unsafe {
+        result = client_entry();
+    }
+    log::debug!("Client example done: {}\n", result);
 
-    log::info!("vsock test start ...\n");
+    // server::test_server();
+    unsafe {
+        result = server_entry();
+    }
+
+    log::debug!("Server Example done: {}\n", result);
 
     loop {}
 }
