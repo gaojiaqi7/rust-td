@@ -32,7 +32,7 @@
         "temp_stack_guard_size": 0x001000,
         "temp_stack_size": 0x021000,
         "temp_heap_size": 0x020000,
-        "payload_size": 0x42C000,
+        "payload_size": 0xC2C000,
         "ipl_size": 0x348000,
         "reset_vector_size": 0x008000
     },
@@ -65,7 +65,7 @@
         "stack_size": 0x800000,
         "heap_size": 0x01000000,
         "payload_base": 0x1000000,
-        "payload_size": 0x800000,
+        "payload_size": 0x2000000,
         "page_table_base": 0x800000,
     }
 }
