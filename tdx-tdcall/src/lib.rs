@@ -12,3 +12,4 @@ pub const USE_TDX_EMULATION: bool = false;
 
 pub mod asm;
 pub mod tdx;
+pub mod tdreport;

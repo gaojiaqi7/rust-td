@@ -269,6 +269,8 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
     //Test JSON function using no-std serd_json.
     json_test();
 
+    //Dump TD Report
+    tdx_tdcall::tdreport::tdreport_dump();
     // Test
     unsafe {
         let pointer: *const u32 = 0x10000000000usize as *const core::ffi::c_void as *const u32;

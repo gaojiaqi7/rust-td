@@ -5,8 +5,8 @@
 use core::sync::atomic::{fence, Ordering};
 
 extern "win64" {
-    fn td_call(Leaf: u64, P1: u64, P2: u64, P3: u64, Results: u64) -> u64;
-    fn td_vm_call(
+    pub fn td_call(Leaf: u64, P1: u64, P2: u64, P3: u64, Results: u64) -> u64;
+    pub fn td_vm_call(
         Leaf: u64,
         P1: u64,
         P2: u64,
@@ -20,7 +20,6 @@ extern "win64" {
 const TDCALL_TDINFO: u64 = 1;
 const TDCALL_TDEXTENDRTMR: u64 = 2;
 const TDCALL_TDGETVEINFO: u64 = 3;
-// const TDCALL_TDREPORT: u64 = 4;
 // const TDCALL_TDSETCPUIDVE: u64 = 5;
 const TDCALL_TDACCEPTPAGE: u64 = 6;
 
@@ -34,7 +33,7 @@ const TDVMCALL_MMIO: u64 = 0x00030;
 const IO_READ: u64 = 0;
 const IO_WRITE: u64 = 1;
 
-const TDX_EXIT_REASON_SUCCESS: u64 = 0;
+pub const TDX_EXIT_REASON_SUCCESS: u64 = 0;
 const TDX_EXIT_REASON_PAGE_ALREADY_ACCEPTED: u64 = 0x00000B0A00000000;
 
 pub const EXIT_REASON_CPUID: u32 = 10;
