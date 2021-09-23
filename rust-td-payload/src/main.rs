@@ -81,6 +81,9 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
         TD_PAYLOAD_HEAP_SIZE as usize,
     );
 
+    //Dump TD Report
+    tdx_tdcall::tdreport::tdreport_dump();
+
     // Test
     unsafe {
         let pointer: *const u32 = 0x10000000000usize as *const core::ffi::c_void as *const u32;
