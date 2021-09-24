@@ -203,11 +203,11 @@ BITS    64
     nop
 
     ;
-    ; Enable SSE
+    ; Enable SSE and Write Protection
     ;
     mov     rax, cr0
     and     rax, 0xfffffffffffffffb     ; clear EM
-    or      rax, 0x2                    ; set MP
+    or      rax, 0x0000000000010002     ; set MP and Write Protection bit
     mov     cr0, rax
     mov     rax, cr4
     or      rax, 0x600                  ; set OSFXSR, OSXMMEXCPT
