@@ -11,7 +11,7 @@ edition = "2018"
 build = "build.rs"
 
 [build-dependencies]
-cc = { version = "1.0.62", default-features = false }
+cc = { git = "https://github.com/jyao1/cc-rs.git", branch = "uefi_support" }
 rust-td-layout = { path = "../rust-td-layout" }
 tdx-tdcall = { path = "../tdx-tdcall" }
 
@@ -28,8 +28,8 @@ tdx-logger =  { path = "../tdx-logger" }
 tdx-exception =  { path = "../tdx-exception" }
 rust-td-layout = { path = "../rust-td-layout" }
 paging = { path = "../rust-paging" }
-ring = { git="https://github.com/jyao1/ring", branch="uefi_support" }
-scroll = { version = "0.10", default-features=false }
+ring = { git = "https://github.com/jyao1/ring.git", branch = "uefi_support", default-features = false }
+scroll = { version = "0.10", default-features = false, features = ["derive"] }
 
 [dependencies.lazy_static]
 version = "1.0"

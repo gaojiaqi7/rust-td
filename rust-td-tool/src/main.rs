@@ -405,7 +405,8 @@ fn build_tdx_mpwakeup_mailbox(mailbox: &mut [u8]) {
 }
 
 fn main() -> std::io::Result<()> {
-    SimpleLogger::new().init().unwrap();
+    use log::LevelFilter;
+    SimpleLogger::new().with_level(LevelFilter::Info).init().unwrap();
     let args: Vec<String> = env::args().collect();
 
     let reset_vector_name = &args[1];

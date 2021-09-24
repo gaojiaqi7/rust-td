@@ -13,3 +13,4 @@ pe-loader = { path = "../pe-loader" }
 rust-td-layout = { path = "../rust-td-layout" }
 simple_logger = "1.11.0"
 scroll = { version = "0.10", default-features=false }
+log = "^0.4.5"

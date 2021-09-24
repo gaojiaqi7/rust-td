@@ -235,41 +235,49 @@ macro_rules! interrupt_error {
 interrupt_no_error!(divide_by_zero, stack, {
     log::info!("Divide by zero\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_no_error!(debug, stack, {
     log::info!("Debug trap\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_no_error!(non_maskable, stack, {
     log::info!("Non-maskable interrupt\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_no_error!(breakpoint, stack, {
     log::info!("Breakpoint trap\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_no_error!(overflow, stack, {
     log::info!("Overflow trap\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_no_error!(bound_range, stack, {
     log::info!("Bound range exceeded fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_no_error!(invalid_opcode, stack, {
     log::info!("Invalid opcode fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_no_error!(device_not_available, stack, {
     log::info!("Device not available fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_error!(double_fault, stack, {
@@ -281,21 +289,25 @@ interrupt_error!(double_fault, stack, {
 interrupt_error!(invalid_tss, stack, {
     log::info!("Invalid TSS fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_error!(segment_not_present, stack, {
     log::info!("Segment not present fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_error!(stack_segment, stack, {
     log::info!("Stack segment fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_error!(protection, stack, {
     log::info!("Protection fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_error!(page, stack, {
@@ -309,6 +321,7 @@ interrupt_error!(page, stack, {
 interrupt_no_error!(fpu, stack, {
     log::info!("FPU floating point fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_error!(alignment_check, stack, {
@@ -320,11 +333,13 @@ interrupt_error!(alignment_check, stack, {
 interrupt_no_error!(machine_check, stack, {
     log::info!("Machine check fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_no_error!(simd, stack, {
     log::info!("SIMD floating point fault\n");
     stack.dump();
+    loop {}
 });
 
 interrupt_no_error!(virtualization, stack, {

@@ -14,6 +14,5 @@
 
 #![no_std]
 #![forbid(unsafe_code)]
-#![feature(slice_fill)]
 
 pub mod pe;
