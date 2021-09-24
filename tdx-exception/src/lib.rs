@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #![no_std]
-#![feature(llvm_asm)]
+#![feature(asm)]
 #![feature(naked_functions)]
 #![feature(global_asm)]
 
