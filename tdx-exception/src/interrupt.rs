@@ -238,111 +238,111 @@ macro_rules! interrupt_error {
 interrupt_no_error!(divide_by_zero, stack, {
     log::info!("Divide by zero\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(debug, stack, {
     log::info!("Debug trap\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(non_maskable, stack, {
     log::info!("Non-maskable interrupt\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(breakpoint, stack, {
     log::info!("Breakpoint trap\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(overflow, stack, {
     log::info!("Overflow trap\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(bound_range, stack, {
     log::info!("Bound range exceeded fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(invalid_opcode, stack, {
     log::info!("Invalid opcode fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(device_not_available, stack, {
     log::info!("Device not available fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_error!(double_fault, stack, {
     log::info!("Double fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_error!(invalid_tss, stack, {
     log::info!("Invalid TSS fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_error!(segment_not_present, stack, {
     log::info!("Segment not present fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_error!(stack_segment, stack, {
     log::info!("Stack segment fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_error!(protection, stack, {
     log::info!("Protection fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_error!(page, stack, {
     let cr2: usize;
-    llvm_asm!("mov rax, cr2" : "={rax}"(cr2) : : : "intel", "volatile");
+    asm!("mov {}, cr2",  out(reg) cr2);
     log::info!("Page fault: {:>016X}\n", cr2);
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(fpu, stack, {
     log::info!("FPU floating point fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_error!(alignment_check, stack, {
     log::info!("Alignment check fault");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(machine_check, stack, {
     log::info!("Machine check fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(simd, stack, {
     log::info!("SIMD floating point fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
 
 interrupt_no_error!(virtualization, stack, {
@@ -403,5 +403,11 @@ interrupt_no_error!(virtualization, stack, {
     };
     log::info!("Virtualization fault\n");
     stack.dump();
-    loop {}
+    deadloop();
 });
+
+fn deadloop() {
+    // TBD: empty `loop {}` wastes CPU cycles
+    #[allow(clippy::empty_loop)]
+    loop {}
+}

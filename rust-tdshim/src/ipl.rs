@@ -31,7 +31,7 @@ pub fn find_and_report_entry_point(fv_buffer: &[u8]) -> Option<(u64, u64, u64)> 
     let image_buffer =
         fv_lib::get_image_from_fv(fv_buffer, fv::FV_FILETYPE_DXE_CORE, fv::SECTION_PE32).unwrap();
 
-    let loaded_buffer = memslice::get_mem_slice_mut(memslice::SliceType::TdPayloadSlice);
+    let loaded_buffer = memslice::get_mem_slice_mut(memslice::SliceType::Payload);
 
     let res = if elf::is_elf(image_buffer) {
         let (image_entry, image_base, image_size) = elf::relocate_elf(image_buffer, loaded_buffer);

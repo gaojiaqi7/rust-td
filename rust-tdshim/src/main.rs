@@ -54,14 +54,14 @@ pub struct HobTemplate {
 #[allow(clippy::empty_loop)]
 fn panic(_info: &PanicInfo) -> ! {
     log::info!("panic ... {:?}\n", _info);
-    loop {}
+    panic!("deadloop");
 }
 
 #[alloc_error_handler]
 #[allow(clippy::empty_loop)]
 fn alloc_error(_info: core::alloc::Layout) -> ! {
     log::info!("alloc_error ... {:?}\n", _info);
-    loop {}
+    panic!("deadloop");
 }
 
 #[derive(Pread, Pwrite)]
@@ -136,7 +136,7 @@ pub extern "win64" fn _start(
     tdx_exception::setup_exception_handlers();
     log::info!("setup_exception_handlers done\n");
 
-    let hob_list = memslice::get_mem_slice(memslice::SliceType::TdShimHobSlice);
+    let hob_list = memslice::get_mem_slice(memslice::SliceType::ShimHob);
     let hob_size = hob_lib::get_hob_total_size(hob_list).unwrap();
     let hob_list = &hob_list[0..hob_size];
     hob_lib::dump_hob(hob_list);
@@ -171,8 +171,8 @@ pub extern "win64" fn _start(
 
     log_hob_list(hob_list);
 
-    let fv_buffer = memslice::get_mem_slice(memslice::SliceType::TdShimPayloadSlice);
-    let _hob_buffer = memslice::get_mem_slice(memslice::SliceType::TdShimHobSlice);
+    let fv_buffer = memslice::get_mem_slice(memslice::SliceType::ShimPayload);
+    let _hob_buffer = memslice::get_mem_slice(memslice::SliceType::ShimHob);
 
     let _hob_header = hob::Header {
         r#type: hob::HOB_TYPE_END_OF_HOB_LIST,
@@ -369,10 +369,8 @@ pub extern "win64" fn _start(
         },
     };
 
-    let hob_slice = memslice::get_dynamic_mem_slice_mut(
-        SliceType::TdPayloadHobSlice,
-        td_payload_hob_base as usize,
-    );
+    let hob_slice =
+        memslice::get_dynamic_mem_slice_mut(SliceType::PayloadHob, td_payload_hob_base as usize);
     let _res = hob_slice.pwrite(hob_template, 0);
 
     let stack_top = (td_payload_stack_base + TD_PAYLOAD_STACK_SIZE as u64) as usize;
@@ -386,5 +384,5 @@ pub extern "win64" fn _start(
         switch_stack_call(entry, stack_top, td_payload_hob_base as usize, 0);
     }
 
-    loop {}
+    panic!("deadloop");
 }

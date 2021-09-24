@@ -25,7 +25,7 @@ pub fn is_pe(pe_image: &[u8]) -> bool {
 pub fn relocate(pe_image: &[u8], new_pe_image: &mut [u8], new_image_base: usize) -> Option<usize> {
     log::info!("start relocate...");
     let image_buffer = pe_image;
-    let loaded_buffer = &mut new_pe_image[..];
+    let loaded_buffer = new_pe_image;
 
     let pe = goblin::pe::PE::parse(image_buffer).ok()?;
     let _header = pe.header;
