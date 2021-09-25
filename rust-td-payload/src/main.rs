@@ -30,7 +30,7 @@ use rust_td_layout::runtime::*;
 
 use linked_list_allocator::LockedHeap;
 
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -278,6 +278,37 @@ fn json_test() {
     assert_eq!(zero, one);
 }
 
+static mut ins: [u8;2] = [0xEB, 0xFE];
+
+//
+// This function will cause page fault by memory protection.
+//
+fn mp_test() {
+
+    //Test NX on payload data sections
+    unsafe {
+        let address = ins.as_ptr() as u64;
+        log::info!("NX test address: {:x}\n", address);
+        let nx = &address as *const u64 as *const fn();
+        (*nx)();
+    }
+
+    //Test NX on heap
+    unsafe {
+        let ins_heap: Vec<u8> = vec![0xEB, 0xFE];
+        let address = ins_heap.as_ptr() as u64;
+        log::info!("NX test address: {:x}\n", address);
+        let nx = &address as *const u64 as *const fn();
+        (*nx)();
+    }
+
+    //Test WP on a hardcode payload code section (PE)
+    unsafe {
+        let ptr_to_wp: *mut u32 = 0x403_3000 as *mut core::ffi::c_void as *mut u32;
+        *ptr_to_wp = 0x1000;
+    }
+}
+
 #[no_mangle]
 #[cfg_attr(target_os = "uefi", export_name = "efi_main")]
 pub extern "win64" fn _start(hob: *const c_void) -> ! {
@@ -310,6 +341,10 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
 
     //Dump TD Report
     tdx_tdcall::tdreport::tdreport_dump();
+
+    //Memory Protection (WP & NX) test.
+    mp_test();
+
     // Test
     unsafe {
         let pointer: *const u32 = 0x10000000000usize as *const core::ffi::c_void as *const u32;
