@@ -2,15 +2,10 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 
-use paging::PHYS_VIRT_OFFSET;
-use rust_td_layout::RuntimeMemoryLayout;
+use rust_td_layout::{RuntimeMemoryLayout, runtime::TD_PAYLOAD_EVENT_LOG_SIZE};
 
 use log::*;
-use x86_64::{
-    structures::paging::PageTableFlags as Flags,
-    structures::paging::{OffsetPageTable, PageTable},
-    PhysAddr, VirtAddr,
-};
+use x86_64::{PhysAddr, VirtAddr, structures::paging::PageTableFlags as Flags, structures::paging::{OffsetPageTable, PageTable}};
 
 extern "win64" {
     fn asm_read_msr64 (index: u32) -> u64;
@@ -20,86 +15,87 @@ extern "win64" {
 const EXTENDED_FUNCTION_INFO: u32 = 0x80000000;
 const EXTENDED_PROCESSOR_INFO: u32 = 0x80000001;
 
-/// page_table_memory_base: page_table_memory_base
-/// system_memory_size
-pub fn setup_paging(layout: &RuntimeMemoryLayout, memory_end: u64) {
-    let runtime_page_table_base = layout.runtime_page_table_base;
-    let page_table_size = layout.runtime_payload_base - layout.runtime_page_table_base;
-    info!(
-        "Frame allocator init done: {:#x?}\n",
-        runtime_page_table_base..(runtime_page_table_base + page_table_size)
-    );
+pub struct Memory<'a> {
+    pt: OffsetPageTable<'a>,
+    layout: &'a RuntimeMemoryLayout,
+    memory_size: u64,
+}
 
-    let mut pt = unsafe {
-        OffsetPageTable::new(
-            &mut *(runtime_page_table_base as *mut PageTable),
-            VirtAddr::new(PHYS_VIRT_OFFSET as u64),
-        )
-    };
-
-    let shared_page_flag = tdx_tdcall::tdx::td_shared_page_mask();
-    let flags = Flags::PRESENT | Flags::WRITABLE;
-    let with_s_flags = unsafe { Flags::from_bits_unchecked(flags.bits() | shared_page_flag) };
-    log::info!(
-        "shared page flags - smask: {:#x} flags: {:?}\n",
-        shared_page_flag,
-        with_s_flags
-    );
-
-    // create to runtime_page_table_base
-    paging::paging::create_mapping(
-        &mut pt,
-        PhysAddr::new(0),
-        VirtAddr::new(0),
-        runtime_page_table_base,
-    );
-
-    // create runtime_page_table_base..runtime_payload_base
-    paging::paging::create_mapping_with_flags(
-        &mut pt,
-        PhysAddr::new(runtime_page_table_base),
-        VirtAddr::new(runtime_page_table_base),
-        page_table_size,
-        with_s_flags,
-    );
-    tdx_tdcall::tdx::tdvmcall_mapgpa(runtime_page_table_base, page_table_size as usize);
-
-    // runtime_paload_base..runtime_dma_base
-    paging::paging::create_mapping(
-        &mut pt,
-        PhysAddr::new(layout.runtime_payload_base),
-        VirtAddr::new(layout.runtime_payload_base),
-        layout.runtime_dma_base - layout.runtime_payload_base,
-    );
-
-    // runtime_dma_base..runtime_heap_base
-    paging::paging::create_mapping_with_flags(
-        &mut pt,
-        PhysAddr::new(layout.runtime_dma_base),
-        VirtAddr::new(layout.runtime_dma_base),
-        layout.runtime_heap_base - layout.runtime_dma_base,
-        with_s_flags,
-    );
-
-    // runtime_heap_base..memory_end
-    paging::paging::create_mapping(
-        &mut pt,
-        PhysAddr::new(layout.runtime_heap_base),
-        VirtAddr::new(layout.runtime_heap_base),
-        memory_end - layout.runtime_heap_base,
-    );
-
-    //
-    // enable the execute disable.
-    //
-    if is_execute_disable_bit_available() {
-        //
-        // For now EFER cannot be set in TDX, but the NX is enabled by default.
-        //
-        // enable_execute_disable_bit();
+impl<'a> Memory<'a> {
+    pub fn new (layout: &RuntimeMemoryLayout, memory_size: u64) -> Memory {
+        Memory {
+            pt: unsafe {
+                OffsetPageTable::new(
+                    &mut *(layout.runtime_page_table_base as *mut PageTable),
+                    VirtAddr::new(paging::PHYS_VIRT_OFFSET as u64),
+                )
+            },
+            layout,
+            memory_size,
+        }
     }
 
-    paging::paging::cr3_write();
+    /// page_table_memory_base: page_table_memory_base
+    /// system_memory_size
+    pub fn setup_paging(&mut self) {
+
+        let shared_page_flag = tdx_tdcall::tdx::td_shared_page_mask();
+        let flags = Flags::PRESENT | Flags::WRITABLE;
+        let with_s_flags = unsafe { Flags::from_bits_unchecked(flags.bits() | shared_page_flag) };
+        let with_nx_flags = flags | Flags::NO_EXECUTE;
+        log::info!(
+            "shared page flags - smask: {:#x} flags: {:?}\n",
+            shared_page_flag,
+            with_s_flags
+        );
+
+        // 0..runtime_payload_base
+        paging::paging::create_mapping(
+            &mut self.pt,
+            PhysAddr::new(0),
+            VirtAddr::new(0),
+            self.layout.runtime_dma_base - 0,
+        );
+
+        // runtime_dma_base..runtime_heap_base with Shared flag
+        paging::paging::create_mapping_with_flags(
+            &mut self.pt,
+            PhysAddr::new(self.layout.runtime_dma_base),
+            VirtAddr::new(self.layout.runtime_dma_base),
+            self.layout.runtime_heap_base - self.layout.runtime_dma_base,
+            with_s_flags | with_nx_flags,
+        );
+
+        let runtime_memory_top = self.layout.runtime_event_log_base + TD_PAYLOAD_EVENT_LOG_SIZE as u64;
+        // runtime_heap_base..memory_top with NX flag
+        paging::paging::create_mapping_with_flags(
+            &mut self.pt,
+            PhysAddr::new(self.layout.runtime_heap_base),
+            VirtAddr::new(self.layout.runtime_heap_base),
+            runtime_memory_top - self.layout.runtime_heap_base,
+            with_nx_flags,
+        );
+
+        // runtime_memory_top..memory_size (end)
+        paging::paging::create_mapping(
+            &mut self.pt,
+            PhysAddr::new(runtime_memory_top),
+            VirtAddr::new(runtime_memory_top),
+            self.memory_size - runtime_memory_top,
+        );
+
+        //
+        // enable the execute disable.
+        //
+        if is_execute_disable_bit_available() {
+            //
+            // For now EFER cannot be set in TDX, but the NX is enabled by default.
+            //
+            // enable_execute_disable_bit();
+        }
+
+        paging::paging::cr3_write();
+    }
 }
 
 fn is_execute_disable_bit_available () -> bool {

@@ -35,6 +35,7 @@ use core::panic::PanicInfo;
 
 use core::ffi::c_void;
 
+use crate::memory::Memory;
 use crate::memslice::SliceType;
 use scroll::{Pread, Pwrite};
 
@@ -253,7 +254,9 @@ pub extern "win64" fn _start(
     );
 
     let memory_size = ipl::get_memory_size(hob_list);
-    memory::setup_paging(&runtime_memorey_layout, memory_size);
+    let mut mem = Memory::new(&runtime_memorey_layout, memory_size);
+
+    mem.setup_paging();
 
     let page_table = hob::MemoryAllocation {
         header: hob::Header {
