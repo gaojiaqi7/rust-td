@@ -1,7 +1,7 @@
 // Copyright (c) 2020 Intel Corporation
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
-
+use goblin::elf::ProgramHeaders;
 use scroll::Pwrite;
 
 const SIZE_4KB: u64 = 0x00001000u64;
@@ -21,7 +21,7 @@ pub fn is_elf(image: &[u8]) -> bool {
     goblin::elf::Elf::parse(image).is_ok()
 }
 
-pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64) {
+pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, ProgramHeaders) {
     let new_image_base = loaded_buffer as *const [u8] as *const u8 as usize;
     // parser file and get entry point
     let elf = goblin::elf::Elf::parse(image).unwrap();
@@ -74,6 +74,7 @@ pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64) {
         elf.entry + new_image_base as u64,
         bottom as u64,
         (top - bottom) as u64,
+        elf.program_headers
     )
 }
 
