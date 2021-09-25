@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use goblin::pe::section_table::SectionTable;
+extern crate alloc;
+
+use alloc::vec::Vec;
+use goblin::pe::section_table::{self as st, SectionTable};
 
 use scroll::{Pread, Pwrite};
 
@@ -22,12 +25,28 @@ pub fn is_pe(pe_image: &[u8]) -> bool {
     goblin::pe::PE::parse(pe_image).is_ok()
 }
 
-pub fn relocate(pe_image: &[u8], new_pe_image: &mut [u8], new_image_base: usize) -> Option<usize> {
+pub struct PeSection {
+    pub vaddr: u64,
+    pub size: u64,
+    characteristic: u32,
+}
+
+impl PeSection {
+    pub fn is_executable (&self) -> bool {
+        self.characteristic & (st::IMAGE_SCN_CNT_CODE | st::IMAGE_SCN_MEM_EXECUTE) != 0
+    }
+
+    pub fn is_write (&self) -> bool {
+        self.characteristic & st::IMAGE_SCN_MEM_WRITE != 0
+    }
+}
+
+pub fn relocate(pe_image: &[u8], new_pe_image: &mut [u8], new_image_base: usize) -> Option<(usize, Vec<PeSection>)> {
     log::info!("start relocate...");
     let image_buffer = pe_image;
     let loaded_buffer = new_pe_image;
 
-    let pe = goblin::pe::PE::parse(image_buffer).ok()?;
+    let pe = goblin::pe::PE::parse(image_buffer).unwrap();
     let _header = pe.header;
     let image_base = pe.image_base;
     let entry_point = pe.entry;
@@ -40,6 +59,7 @@ pub fn relocate(pe_image: &[u8], new_pe_image: &mut [u8], new_image_base: usize)
     loaded_buffer[0..total_header_size].copy_from_slice(&image_buffer[0..total_header_size]);
     let _ = loaded_buffer.pwrite(new_image_base as u64, (24 + pe_header_offset + 24) as usize);
 
+    let mut pe_sections: Vec<PeSection> = Vec::new();
     // Load the PE header into the destination memory
     for section in pe.sections.iter() {
         let section_size = core::cmp::min(section.size_of_raw_data, section.virtual_size);
@@ -50,6 +70,7 @@ pub fn relocate(pe_image: &[u8], new_pe_image: &mut [u8], new_image_base: usize)
             &image_buffer[section.pointer_to_raw_data as usize
                 ..(section.pointer_to_raw_data + section_size) as usize],
         );
+        pe_sections.push(PeSection {vaddr: section.virtual_address as u64, size: section_size as u64, characteristic: section.characteristics});
     }
     for section in pe.sections.iter() {
         if &section.name[0..6] == b".reloc" {
@@ -63,21 +84,22 @@ pub fn relocate(pe_image: &[u8], new_pe_image: &mut [u8], new_image_base: usize)
         }
     }
 
-    Some(new_image_base + entry_point as usize)
+    Some((new_image_base + entry_point as usize, pe_sections))
 }
 
-pub fn relocate_pe_mem(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64) {
+pub fn relocate_pe_mem(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, Vec<PeSection>) {
     // parser file and get entry point
     let image_buffer = image;
     let image_size = image.len();
     let new_image_base = loaded_buffer as *const [u8] as *const u8 as usize;
 
-    let res = relocate(image_buffer, loaded_buffer, new_image_base).unwrap();
+    let (entry_point, pe_sections) = relocate(image_buffer, loaded_buffer, new_image_base).unwrap();
 
     (
-        res as u64,
+        entry_point as u64,
         new_image_base as usize as u64,
         image_size as u64,
+        pe_sections
     )
 }
 

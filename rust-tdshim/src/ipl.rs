@@ -9,6 +9,7 @@ use elf_loader::elf;
 use pe_loader::pe;
 
 use crate::memslice;
+use crate::Memory;
 
 const EXTENDED_FUNCTION_INFO: u32 = 0x80000000;
 const VIRT_PHYS_MEM_SIZES: u32 = 0x80000008;
@@ -27,18 +28,35 @@ pub fn efi_page_to_size(page: u64) -> u64 {
     page * SIZE_4KB
 }
 
-pub fn find_and_report_entry_point(fv_buffer: &[u8]) -> Option<(u64, u64, u64)> {
+pub fn find_and_report_entry_point(mem: &mut Memory, fv_buffer: &[u8]) -> Option<(u64, u64, u64)> {
     let image_buffer =
         fv_lib::get_image_from_fv(fv_buffer, fv::FV_FILETYPE_DXE_CORE, fv::SECTION_PE32).unwrap();
 
     let loaded_buffer = memslice::get_mem_slice_mut(memslice::SliceType::Payload);
 
     let res = if elf::is_elf(image_buffer) {
-        let (image_entry, image_base, image_size) = elf::relocate_elf(image_buffer, loaded_buffer);
+        let (image_entry, image_base, image_size, program_headers) = elf::relocate_elf(image_buffer, loaded_buffer);
+        for ph in program_headers {
+            if !ph.is_executable() {
+                mem.set_nx_bit(ph.p_vaddr + loaded_buffer.as_ptr() as u64, ph.p_filesz);
+            }
+            if !ph.is_write() {
+                log::info!("WP in elf: {:x}\n", ph.p_vaddr + loaded_buffer.as_ptr() as u64);
+                mem.set_write_protect(ph.p_vaddr + loaded_buffer.as_ptr() as u64, ph.p_filesz);
+            }
+        }
         (image_entry, image_base, image_size)
     } else if pe::is_pe(image_buffer) {
-        let (image_entry, image_base, image_size) =
+        let (image_entry, image_base, image_size, section_table) =
             pe::relocate_pe_mem(image_buffer, loaded_buffer);
+        for sc in section_table {
+            if !sc.is_executable()  {
+                mem.set_nx_bit(sc.vaddr + loaded_buffer.as_ptr() as u64, sc.size);
+            }
+            if !sc.is_write() {
+                mem.set_write_protect(sc.vaddr + loaded_buffer.as_ptr() as u64, sc.size);
+            }
+        }
         (image_entry, image_base, image_size)
     } else {
         return None;

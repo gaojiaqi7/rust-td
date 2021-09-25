@@ -32,6 +32,7 @@ pub fn setup_paging(page_table_memory_base: u64, system_memory_size: u64) {
         &mut pt,
         PhysAddr::new(0),
         VirtAddr::new(0),
+        PAGE_SIZE_DEFAULT as u64,
         system_memory_size,
     );
     paging::cr3_write();
