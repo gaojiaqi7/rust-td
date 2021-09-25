@@ -226,3 +226,8 @@ pub extern "C" fn send (sockfd: i32, buf: *mut u8,  len: u64, flags: i32) -> i64
         },
     }
 }
+
+#[no_mangle]
+pub extern "C" fn close (sockfd: i32) -> i32 {
+    shutdown (sockfd, 0)
+}
