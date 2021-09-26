@@ -86,6 +86,12 @@ impl VirtQueue {
         // alloc continuous pages
         let dma = DMA::new(layout.size / PAGE_SIZE)?;
 
+        // Clear the memory before use.
+        unsafe {
+            let dma_slice = core::slice::from_raw_parts_mut(dma.paddr() as *mut u8, layout.size);
+            dma_slice.fill(0);
+        }
+
         // header.queue_set(idx as u32, size as u32, PAGE_SIZE as u32, dma.pfn());
         header.set_descriptors_address(dma.paddr() as u64);
         header.set_avail_ring(dma.paddr() as u64 + layout.avail_offset as u64);

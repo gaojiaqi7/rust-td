@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 #![cfg_attr(not(test), no_std)]
+#![feature(slice_fill)]
 
 extern crate alloc;
 
