@@ -7,6 +7,7 @@ use log::*;
 
 use crate::{TD_SHIM_TEMP_HEAP_BASE, TD_SHIM_TEMP_HEAP_SIZE};
 
+#[cfg(not(test))]
 #[global_allocator]
 static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
@@ -16,6 +17,7 @@ pub(super) fn init() {
     let heap_size = TD_SHIM_TEMP_HEAP_SIZE as usize;
 
     unsafe {
+        #[cfg(not(test))]
         HEAP_ALLOCATOR.lock().init(heap_start, heap_size);
     }
     info!(

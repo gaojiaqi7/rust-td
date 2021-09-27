@@ -2,10 +2,12 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 
+#![allow(unused)]
 #![feature(global_asm)]
 #![feature(alloc_error_handler)]
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
+#![allow(unused_imports)]
 
 mod heap;
 mod ipl;
@@ -52,14 +54,14 @@ pub struct HobTemplate {
     pub memory_blow_1m: hob::ResourceDescription,
     pub end_off_hob: hob::Header,
 }
-
+#[cfg(not(test))]
 #[panic_handler]
 #[allow(clippy::empty_loop)]
 fn panic(_info: &PanicInfo) -> ! {
     log::info!("panic ... {:?}\n", _info);
     panic!("deadloop");
 }
-
+#[cfg(not(test))]
 #[alloc_error_handler]
 #[allow(clippy::empty_loop)]
 fn alloc_error(_info: core::alloc::Layout) -> ! {
@@ -126,6 +128,7 @@ fn log_hob_list(hob_list: &[u8]) {
     );
 }
 
+#[cfg(not(test))]
 #[no_mangle]
 #[export_name = "efi_main"]
 pub extern "win64" fn _start(
@@ -329,7 +332,8 @@ pub extern "win64" fn _start(
         resource_length: 0x80000u64 + 0x20000u64,
     };
 
-    let (entry, basefw, basefwsize) = ipl::find_and_report_entry_point(&mut mem, fv_buffer).unwrap();
+    let (entry, basefw, basefwsize) =
+        ipl::find_and_report_entry_point(&mut mem, fv_buffer).unwrap();
     let entry = entry as usize;
 
     const PAYLOAD_NAME_GUID: efi::Guid = efi::Guid::from_fields(
