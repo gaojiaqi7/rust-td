@@ -35,13 +35,17 @@ pub fn find_and_report_entry_point(mem: &mut Memory, fv_buffer: &[u8]) -> Option
     let loaded_buffer = memslice::get_mem_slice_mut(memslice::SliceType::Payload);
 
     let res = if elf::is_elf(image_buffer) {
-        let (image_entry, image_base, image_size, program_headers) = elf::relocate_elf(image_buffer, loaded_buffer);
+        let (image_entry, image_base, image_size, program_headers) =
+            elf::relocate_elf(image_buffer, loaded_buffer);
         for ph in program_headers {
             if !ph.is_executable() {
                 mem.set_nx_bit(ph.p_vaddr + loaded_buffer.as_ptr() as u64, ph.p_filesz);
             }
             if !ph.is_write() {
-                log::info!("WP in elf: {:x}\n", ph.p_vaddr + loaded_buffer.as_ptr() as u64);
+                log::info!(
+                    "WP in elf: {:x}\n",
+                    ph.p_vaddr + loaded_buffer.as_ptr() as u64
+                );
                 mem.set_write_protect(ph.p_vaddr + loaded_buffer.as_ptr() as u64, ph.p_filesz);
             }
         }
@@ -50,7 +54,7 @@ pub fn find_and_report_entry_point(mem: &mut Memory, fv_buffer: &[u8]) -> Option
         let (image_entry, image_base, image_size, section_table) =
             pe::relocate_pe_mem(image_buffer, loaded_buffer);
         for sc in section_table {
-            if !sc.is_executable()  {
+            if !sc.is_executable() {
                 mem.set_nx_bit(sc.vaddr + loaded_buffer.as_ptr() as u64, sc.size);
             }
             if !sc.is_write() {

@@ -32,16 +32,20 @@ pub struct PeSection {
 }
 
 impl PeSection {
-    pub fn is_executable (&self) -> bool {
+    pub fn is_executable(&self) -> bool {
         self.characteristic & (st::IMAGE_SCN_CNT_CODE | st::IMAGE_SCN_MEM_EXECUTE) != 0
     }
 
-    pub fn is_write (&self) -> bool {
+    pub fn is_write(&self) -> bool {
         self.characteristic & st::IMAGE_SCN_MEM_WRITE != 0
     }
 }
 
-pub fn relocate(pe_image: &[u8], new_pe_image: &mut [u8], new_image_base: usize) -> Option<(usize, Vec<PeSection>)> {
+pub fn relocate(
+    pe_image: &[u8],
+    new_pe_image: &mut [u8],
+    new_image_base: usize,
+) -> Option<(usize, Vec<PeSection>)> {
     log::info!("start relocate...");
     let image_buffer = pe_image;
     let loaded_buffer = new_pe_image;
@@ -70,7 +74,11 @@ pub fn relocate(pe_image: &[u8], new_pe_image: &mut [u8], new_image_base: usize)
             &image_buffer[section.pointer_to_raw_data as usize
                 ..(section.pointer_to_raw_data + section_size) as usize],
         );
-        pe_sections.push(PeSection {vaddr: section.virtual_address as u64, size: section_size as u64, characteristic: section.characteristics});
+        pe_sections.push(PeSection {
+            vaddr: section.virtual_address as u64,
+            size: section_size as u64,
+            characteristic: section.characteristics,
+        });
     }
     for section in pe.sections.iter() {
         if &section.name[0..6] == b".reloc" {
@@ -99,7 +107,7 @@ pub fn relocate_pe_mem(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64
         entry_point as u64,
         new_image_base as usize as u64,
         image_size as u64,
-        pe_sections
+        pe_sections,
     )
 }
 

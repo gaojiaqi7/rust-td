@@ -7,8 +7,8 @@ use log::*;
 use x86_64::{
     structures::paging::PageTableFlags as Flags,
     structures::paging::{
-        Mapper, OffsetPageTable, Page, PageSize, PhysFrame, Size1GiB, Size2MiB, Size4KiB,
-        mapper::TranslateResult, Translate, mapper::MappedFrame
+        mapper::MappedFrame, mapper::TranslateResult, Mapper, OffsetPageTable, Page, PageSize,
+        PhysFrame, Size1GiB, Size2MiB, Size4KiB, Translate,
     },
     PhysAddr, VirtAddr,
 };
@@ -34,7 +34,10 @@ pub fn create_mapping_with_flags(
     let allocator: &mut BMFrameAllocator = &mut FRAME_ALLOCATOR.lock();
 
     while sz > 0 {
-        let addr_align = min (ps.trailing_zeros(), min(pa.as_u64().trailing_zeros(), va.as_u64().trailing_zeros())) as u64;
+        let addr_align = min(
+            ps.trailing_zeros(),
+            min(pa.as_u64().trailing_zeros(), va.as_u64().trailing_zeros()),
+        ) as u64;
         let mapped_size = if addr_align >= ALIGN_1G_BITS && sz >= ALIGN_1G {
             trace!(
                 "1GB {} {:016x} /{:016x} {:016x}\n",
@@ -105,22 +108,24 @@ pub fn cr3_write() {
     log::info!("Cr3 - {:x}\n", unsafe { x86::controlregs::cr3() });
 }
 
-pub fn set_page_flags (pt: &mut OffsetPageTable, mut va: VirtAddr, mut size: i64, flag: Flags) {
+pub fn set_page_flags(pt: &mut OffsetPageTable, mut va: VirtAddr, mut size: i64, flag: Flags) {
     let mut page_size: u64;
 
     while size > 0 {
-        if let TranslateResult::Mapped{frame, ..} = pt.translate(va) {
+        if let TranslateResult::Mapped { frame, .. } = pt.translate(va) {
             match frame {
                 MappedFrame::Size4KiB(..) => {
                     type S = Size4KiB;
                     page_size = S::SIZE;
                     let page: Page<S> = Page::containing_address(va);
-                    unsafe { pt.update_flags(page, flag).unwrap().flush();}
-                },
+                    unsafe {
+                        pt.update_flags(page, flag).unwrap().flush();
+                    }
+                }
                 MappedFrame::Size2MiB(..) => {
                     type S = Size2MiB;
                     page_size = S::SIZE;
-                },
+                }
                 MappedFrame::Size1GiB(..) => {
                     type S = Size1GiB;
                     log::info!("Size1GiB entry.\n");

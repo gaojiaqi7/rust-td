@@ -2,14 +2,21 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 
-use rust_td_layout::{RuntimeMemoryLayout, runtime::{TD_PAYLOAD_EVENT_LOG_SIZE, TD_PAYLOAD_SIZE}};
+use rust_td_layout::{
+    runtime::{TD_PAYLOAD_EVENT_LOG_SIZE, TD_PAYLOAD_SIZE},
+    RuntimeMemoryLayout,
+};
 
 use log::*;
-use x86_64::{PhysAddr, VirtAddr, structures::paging::PageTableFlags as Flags, structures::paging::{OffsetPageTable, PageTable}};
+use x86_64::{
+    structures::paging::PageTableFlags as Flags,
+    structures::paging::{OffsetPageTable, PageTable},
+    PhysAddr, VirtAddr,
+};
 
 extern "win64" {
-    fn asm_read_msr64 (index: u32) -> u64;
-    fn asm_write_msr64 (index: u32, value: u64) -> u64;
+    fn asm_read_msr64(index: u32) -> u64;
+    fn asm_write_msr64(index: u32, value: u64) -> u64;
 }
 
 const EXTENDED_FUNCTION_INFO: u32 = 0x80000000;
@@ -22,7 +29,7 @@ pub struct Memory<'a> {
 }
 
 impl<'a> Memory<'a> {
-    pub fn new (layout: &RuntimeMemoryLayout, memory_size: u64) -> Memory {
+    pub fn new(layout: &RuntimeMemoryLayout, memory_size: u64) -> Memory {
         Memory {
             pt: unsafe {
                 OffsetPageTable::new(
@@ -38,7 +45,6 @@ impl<'a> Memory<'a> {
     /// page_table_memory_base: page_table_memory_base
     /// system_memory_size
     pub fn setup_paging(&mut self) {
-
         let shared_page_flag = tdx_tdcall::tdx::td_shared_page_mask();
         let flags = Flags::PRESENT | Flags::WRITABLE;
         let with_s_flags = unsafe { Flags::from_bits_unchecked(flags.bits() | shared_page_flag) };
@@ -87,7 +93,8 @@ impl<'a> Memory<'a> {
             with_s_flags | with_nx_flags,
         );
 
-        let runtime_memory_top = self.layout.runtime_event_log_base + TD_PAYLOAD_EVENT_LOG_SIZE as u64;
+        let runtime_memory_top =
+            self.layout.runtime_event_log_base + TD_PAYLOAD_EVENT_LOG_SIZE as u64;
         // runtime_heap_base..memory_top with NX flag
         paging::paging::create_mapping_with_flags(
             &mut self.pt,
@@ -120,23 +127,20 @@ impl<'a> Memory<'a> {
         paging::paging::cr3_write();
     }
 
-    
-    pub fn set_write_protect (&mut self, address: u64, size: u64) {
+    pub fn set_write_protect(&mut self, address: u64, size: u64) {
         let flags = Flags::PRESENT | Flags::USER_ACCESSIBLE;
 
         paging::paging::set_page_flags(&mut self.pt, VirtAddr::new(address), size as i64, flags);
     }
 
-    pub fn set_nx_bit (&mut self, address: u64, size: u64) {
+    pub fn set_nx_bit(&mut self, address: u64, size: u64) {
         let flags = Flags::PRESENT | Flags::WRITABLE | Flags::USER_ACCESSIBLE | Flags::NO_EXECUTE;
-        
+
         paging::paging::set_page_flags(&mut self.pt, VirtAddr::new(address), size as i64, flags);
     }
-
 }
 
-fn is_execute_disable_bit_available () -> bool {
-
+fn is_execute_disable_bit_available() -> bool {
     let cpuid = unsafe { core::arch::x86_64::__cpuid(EXTENDED_FUNCTION_INFO) };
 
     if cpuid.eax >= EXTENDED_PROCESSOR_INFO {
@@ -154,10 +158,14 @@ fn is_execute_disable_bit_available () -> bool {
 //
 //  Enable Execute Disable Bit.
 //
-fn enable_execute_disable_bit () {
-  let mut msr: u64;
+fn enable_execute_disable_bit() {
+    let mut msr: u64;
 
-  unsafe { msr = asm_read_msr64 (0xC0000080);}
-  msr |= 0x800;
-  unsafe { asm_write_msr64 (0xC0000080, msr);}
+    unsafe {
+        msr = asm_read_msr64(0xC0000080);
+    }
+    msr |= 0x800;
+    unsafe {
+        asm_write_msr64(0xC0000080, msr);
+    }
 }

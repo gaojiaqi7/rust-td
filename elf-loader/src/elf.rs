@@ -74,7 +74,7 @@ pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, P
         elf.entry + new_image_base as u64,
         bottom as u64,
         (top - bottom) as u64,
-        elf.program_headers
+        elf.program_headers,
     )
 }
 

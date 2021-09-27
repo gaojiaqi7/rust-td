@@ -469,7 +469,7 @@ fn main() -> std::io::Result<()> {
             TD_SHIM_PAYLOAD_BASE as usize + rust_payload_header.len(),
         );
         match reloc {
-            Some((entry_point,..)) => println!("reloc payload entrypoint - 0x{:x}", entry_point),
+            Some((entry_point, ..)) => println!("reloc payload entrypoint - 0x{:x}", entry_point),
             None => println!("reloc payload fail"),
         }
     }
