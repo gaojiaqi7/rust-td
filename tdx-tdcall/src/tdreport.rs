@@ -10,8 +10,8 @@ use core::fmt;
 use crate::tdx;
 
 const TDCALL_TDREPORT: u64 = 4;
-const TD_REPORT_SIZE: usize = 0x400;
-const TD_REPORT_ADDITIONAL_DATA_SIZE: usize = 64;
+pub const TD_REPORT_SIZE: usize = 0x400;
+pub const TD_REPORT_ADDITIONAL_DATA_SIZE: usize = 64;
 const TD_REPORT_BUFF_SIZE: usize = 0x840; // TD_REPORT_SIZE*2 + TD_REPORT_ADDITIONAL_DATA_SIZE
 
 #[derive(Debug, Pread, Pwrite)]
@@ -120,6 +120,12 @@ impl TdxReport {
             let report: TdxReport = raw.pread(0).ok()?;
             Some(report)
         }
+    }
+
+    pub fn to_buff (&self) -> [u8; TD_REPORT_SIZE] {
+        let mut buff: [u8; TD_REPORT_SIZE] = [0; TD_REPORT_SIZE];
+        buff.pwrite(self, 0).unwrap();
+        buff
     }
 }
 

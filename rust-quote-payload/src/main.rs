@@ -22,6 +22,9 @@ use core::panic::PanicInfo;
 
 use core::ffi::c_void;
 
+use alloc::boxed::Box;
+use tdx_tdcall::tdreport;
+
 #[allow(unused)]
 mod platform;
 mod virtio_impl;
@@ -32,10 +35,21 @@ mod server;
 
 mod vsock_lib;
 
-#[link(name = "main")]
+const QUOTE_ATTESTATION_HEAP_SIZE: usize = 0x100000;
+const TD_QUOTE_SIZE: usize = 5000;
+const TD_REPORT_VERIFY_SIZE: usize = 1024;
+
+// #[link(name = "main")]
+// extern "C" {
+//     fn server_entry() -> i32;
+//     fn client_entry() -> i32;
+// }
+
+#[link(name = "migtd_attest")]
 extern "C" {
-    fn server_entry() -> i32;
-    fn client_entry() -> i32;
+    fn get_quote(p_tdx_report: *const c_void, tdx_report_size: i32, p_quote: *mut c_void, p_quote_size: *mut i32) -> bool;
+    fn verify_quote_integrity(p_quote: *const c_void, quote_size: i32, p_tdx_report: *mut c_void, p_tdx_report_size: *mut i32) -> bool;
+    fn init_heap(p_td_heap_base: *mut c_void, td_heap_size: i32);
 }
 
 #[cfg(not(test))]
@@ -54,7 +68,7 @@ fn alloc_error(_info: core::alloc::Layout) -> ! {
     loop {}
 }
 
-fn init_heap(heap_start: usize, heap_size: usize) {
+fn init_payload_heap(heap_start: usize, heap_size: usize) {
     unsafe {
         ALLOCATOR.lock().init(heap_start, heap_size);
     }
@@ -83,7 +97,7 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
     let runtime_memory_layout =
         RuntimeMemoryLayout::new(hob_lib::get_system_memory_size_below_4gb(hob));
 
-    init_heap(
+    init_payload_heap(
         runtime_memory_layout.runtime_heap_base as usize,
         TD_PAYLOAD_HEAP_SIZE as usize,
     );
@@ -97,6 +111,7 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
 
     fw_pci::print_bus();
 
+    log::info!("runtime_memory_layout.runtime_dma_base is {:X}\n", runtime_memory_layout.runtime_dma_base);
     virtio_impl::init(
         runtime_memory_layout.runtime_dma_base as usize,
         TD_PAYLOAD_DMA_SIZE,
@@ -104,19 +119,28 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
 
     vsock_impl::init_vsock_device();
 
-    // client::test_client();
+    let mut heap: Box<[u8; QUOTE_ATTESTATION_HEAP_SIZE]> =Box::new([0; QUOTE_ATTESTATION_HEAP_SIZE]);
+
+    let additional_data: [u8;tdreport::TD_REPORT_ADDITIONAL_DATA_SIZE] = [0;tdreport::TD_REPORT_ADDITIONAL_DATA_SIZE];
+
+    let td_report = tdreport::tdcall_report(&additional_data).to_buff();
+    let mut quote: Box<[u8; TD_QUOTE_SIZE]> =Box::new([0; TD_QUOTE_SIZE]);
+    let mut quote_size: i32 = TD_QUOTE_SIZE as i32;
+
+    let mut td_report_verify: Box<[u8; TD_REPORT_VERIFY_SIZE]> = Box::new([0; TD_REPORT_VERIFY_SIZE]);
+    let mut report_verify_size = TD_REPORT_VERIFY_SIZE as i32;
+
     let mut result;
-    unsafe {
-        result = client_entry();
-    }
-    log::debug!("Client example done: {}\n", result);
 
-    // server::test_server();
     unsafe {
-        result = server_entry();
-    }
+        init_heap (heap.as_mut_ptr() as *mut c_void, QUOTE_ATTESTATION_HEAP_SIZE as i32);
 
-    log::debug!("Server Example done: {}\n", result);
+        result = get_quote (td_report.as_ptr() as *mut c_void, tdreport::TD_REPORT_SIZE as i32, quote.as_mut_ptr() as *mut c_void, &mut quote_size as *mut i32);
+        log::info!("get_quote result is {}\n", result);
+
+        result = verify_quote_integrity(quote.as_ptr() as *mut c_void, quote_size, td_report_verify.as_mut_ptr() as *mut c_void, &mut report_verify_size as *mut i32);
+        log::info!("verify_quote_integrity result is {}\n", result);
+    }
 
     loop {}
 }
