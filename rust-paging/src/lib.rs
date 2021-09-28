@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 #![no_std]
+#![allow(unused)]
 
 mod consts;
 mod frame;

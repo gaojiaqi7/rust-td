@@ -159,11 +159,11 @@ pub fn tdcall_report(additional_data: &[u8]) -> TdxReport {
     let mut tdreport_buff = TD_REPORT.lock();
     let address = tdreport_buff.as_ptr() as usize;
 
-    let report_offset: usize = TD_REPORT_SIZE - address & (TD_REPORT_SIZE - 1);
+    let report_offset: usize = (TD_REPORT_SIZE - address) & (TD_REPORT_SIZE - 1);
     let data_offset: usize = report_offset + TD_REPORT_SIZE;
 
     tdreport_buff[data_offset..data_offset + TD_REPORT_ADDITIONAL_DATA_SIZE]
-        .copy_from_slice(&additional_data[..]);
+        .copy_from_slice(additional_data);
 
     let buffer: u64 =
         tdreport_buff[report_offset..].as_mut_ptr() as *mut core::ffi::c_void as usize as u64;
