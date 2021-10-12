@@ -158,7 +158,7 @@ impl VirtQueue {
                     return Err(VirtioError::DmaError);
                 }
                 let dma_output =
-                    core::slice::from_raw_parts_mut(dma_addr as *mut u8, 64 * PAGE_SIZE);
+                    core::slice::from_raw_parts_mut(dma_addr as *mut u8, output.len());
 
                 let dma_tlb = DmaTlbItem::new(dma_addr, output);
                 if DMATLB.lock().contains_key(&dma_addr) {
