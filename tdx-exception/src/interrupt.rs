@@ -263,6 +263,7 @@ interrupt_no_error!(bound_range, stack, {
 interrupt_no_error!(invalid_opcode, stack, {
     log::info!("Invalid opcode fault\n");
     stack.dump();
+    loop{}
 });
 
 interrupt_no_error!(device_not_available, stack, {
