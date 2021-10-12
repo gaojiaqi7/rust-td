@@ -231,3 +231,25 @@ pub extern "C" fn send (sockfd: i32, buf: *mut u8,  len: u64, flags: i32) -> i64
 pub extern "C" fn close (sockfd: i32) -> i32 {
     shutdown (sockfd, 0)
 }
+
+#[no_mangle]
+pub extern "C" fn debug_msg (msg: *const u8) {
+    log::info!("From migtd_attest - ");
+    unsafe {
+        let mut len = 0;
+        let mut ptr = msg as u64;
+
+        // Find the end address of cstyle string.
+        loop {
+            if *(ptr as *const u8) != 0 {
+                ptr += 1;
+                len += 1;
+            } else {
+                break;
+            }
+        }
+        let log_slice = slice::from_raw_parts(msg, len as usize);
+        let log = from_utf8(log_slice).unwrap();
+        log::info!("{}\n", log);
+    }
+}
