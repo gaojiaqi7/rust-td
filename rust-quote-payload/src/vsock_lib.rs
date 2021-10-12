@@ -1,10 +1,13 @@
-use core::slice;
+
+use core::{slice, str::from_utf8};
 
 use fw_vsock::vsock::{VsockAddr, VsockStream};
 use alloc::collections::btree_map::BTreeMap;
 
 use lazy_static::lazy_static;
 use spin::Mutex;
+
+use alloc::{collections::VecDeque};
 
 lazy_static! {
     static ref SOCKET_COUNT: Mutex<i32> = Mutex::new(2);
@@ -44,7 +47,7 @@ pub extern "C" fn socket_server () {
 
 pub struct Socket {
     vsock_stream: VsockStream,
-    remote: Option<VsockStream>
+    recv_queue: VecDeque<u8>,
 }
 
 #[repr(C)]
@@ -61,7 +64,7 @@ pub extern "C" fn socket (_domain: i32, _socket_type: i32, _protocol: i32) -> i3
     let socket_stream = VsockStream::new();
     *SOCKET_COUNT.lock() += 1;
     let sockfd = *SOCKET_COUNT.lock();
-    let socket = Socket {vsock_stream: socket_stream, remote: None};
+    let socket = Socket {vsock_stream: socket_stream, recv_queue: VecDeque::<u8>::new()};
     SOCKET_COLLECT.lock().insert(sockfd, socket);
     sockfd
 }
@@ -113,14 +116,16 @@ pub extern "C" fn accept (sockfd: i32, socket_addr: *mut SockAddr, addrlen: *mut
     match SOCKET_COLLECT.lock().get_mut(&sockfd) {
         Some(socket) => {
             match socket.vsock_stream.accept() {
-                Ok((remote, vsockaddr)) => {
-                    socket.remote = Some(remote);
+                Ok((new_stream, vsockaddr)) => {
                     unsafe {
                         (*socket_addr).svm_cid = vsockaddr.cid();
                         (*socket_addr).svm_port = vsockaddr.port();
                         *addrlen = 14;
                     };
-                    0
+                    let sockfd = *SOCKET_COUNT.lock();
+                    let socket = Socket {vsock_stream: new_stream, recv_queue: VecDeque::<u8>::new()};
+                    SOCKET_COLLECT.lock().insert(sockfd, socket);
+                    sockfd
                 },
                 Err(_e) => {
                     log::info!("accept error\n");
@@ -142,7 +147,7 @@ pub extern "C" fn connect (sockfd: i32, socket_addr: *mut SockAddr, _addrlen: u3
             // if socket.connected.
             unsafe {
                 match socket.vsock_stream.connect(&VsockAddr::new((*socket_addr).svm_cid, (*socket_addr).svm_port)) {
-                    Ok(()) => 0,
+                    Ok(()) => {0},
                     Err(_e) => {
                         log::info!("connect error\n");
                         -1
@@ -158,27 +163,33 @@ pub extern "C" fn connect (sockfd: i32, socket_addr: *mut SockAddr, _addrlen: u3
 }
 
 #[no_mangle]
-pub extern "C" fn recv (sockfd: i32, buf: *mut u8,  len: u64, flags: i32) -> i64 {
+pub extern "C" fn recv (sockfd: i32, buf: *mut u8, len: u64, flags: i32) -> i64 {
     match SOCKET_COLLECT.lock().get_mut(&sockfd) {
         Some(socket) => {
-            match &mut socket.remote {
-                Some(remote) => {
-                    unsafe {
-                        let recv_buf = slice::from_raw_parts_mut(buf, len as usize);
-                        let recvn = remote
-                            .recv(&mut recv_buf[..], flags as u32)
-                            .expect("recv error\n");
-                        if recvn == 0 {
-                            return 0;
-                        }
-                        log::info!("recv: {:?}\n", &recv_buf[..recvn]);
-                        recvn as i64
-                    }
+            unsafe {
+                let buf = slice::from_raw_parts_mut(buf, len as usize);
+                if socket.recv_queue.len() >= len as usize {
+                    buf.copy_from_slice(&socket.recv_queue.as_slices().0[0..len as usize]);
+                    socket.recv_queue.drain(0..(len-1) as usize);
+                    return len as i64;
                 }
-                None => {
-                    log::info!("client not found\n");
-                    return -1
+
+                let mut recv_buf = vec![0; 8192];
+
+                let recvn = socket.vsock_stream
+                    .recv(recv_buf.as_mut_slice(), flags as u32)
+                    .expect("recv error\n");
+                if recvn == 0 {
+                    return 0;
                 }
+
+                for i in 0..recvn {
+                    socket.recv_queue.push_back(recv_buf[i]);
+                }
+
+                buf.copy_from_slice(&socket.recv_queue.as_slices().0[0..len as usize]);
+                socket.recv_queue.drain(0..len as usize);
+                len as i64
             }
         },
         None => {
@@ -209,14 +220,12 @@ pub extern "C" fn send (sockfd: i32, buf: *mut u8,  len: u64, flags: i32) -> i64
         Some(socket) => {
             unsafe {
                 let send_buf = slice::from_raw_parts(buf, len as usize);
-                log::info!("send len: {:}\n", len);
                 let sendn = socket.vsock_stream
                     .send(&send_buf[..], flags as u32)
                     .expect("send error\n");
                 if sendn == 0 {
                     return 0;
                 }
-                log::info!("send: {:?}\n", &send_buf[..len as usize]);
                 sendn as i64
             }
         },

@@ -7,6 +7,7 @@
 #![cfg_attr(not(test), no_main)]
 #![cfg_attr(test, allow(unused_imports))]
 
+#[macro_use]
 extern crate alloc;
 use uefi_pi::pi::hob_lib;
 
