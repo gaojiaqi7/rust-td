@@ -13,7 +13,7 @@ pub const QUEUE_RX: u16 = 0;
 pub const QUEUE_TX: u16 = 1;
 pub const QUEUE_EVENT: u16 = 2;
 
-pub const MAX_VSOCK_MTU: usize = 1024*8;
+pub const MAX_VSOCK_MTU: usize = 1024*16;
 
 #[repr(C)]
 #[repr(align(64))]

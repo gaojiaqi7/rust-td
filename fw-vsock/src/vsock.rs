@@ -230,7 +230,8 @@ impl VsockStream {
         let nsend = get_vsock_device()
             .send(&[packet.as_ref(), buf])
             .map_err(|_| VsockError::DeviceError)?;
-        Ok(nsend)
+
+        Ok(nsend - HEADER_LEN)
     }
 
     pub fn recv(&mut self, buf: &mut [u8], _flags: u32) -> Result<usize> {
@@ -253,6 +254,10 @@ impl VsockStream {
         if packet.op() == field::OP_RST {
             self.reset()?;
             return Err(VsockError::Illegal);
+        }
+        if packet.op() != field::OP_RW {
+            log::info!("packet.op() != field::OP_RW\n");
+            panic!();
         }
 
         self.rx_cnt += packet.data_len() as u32;
