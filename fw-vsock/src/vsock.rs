@@ -165,11 +165,18 @@ impl VsockStream {
             return Err(VsockError::DeviceError);
         }
 
+        let mut packet: Packet<&[u8]>;
         let mut recv_buf = [0u8; HEADER_LEN];
-        let nread = get_vsock_device()
-            .recv(&[&mut recv_buf[..]])
-            .map_err(|_| VsockError::DeviceError)?;
-        let packet = Packet::new_checked(&recv_buf[..nread])?;
+        loop {
+            let nread = get_vsock_device()
+                .recv(&[&mut recv_buf[..]])
+                .map_err(|_| VsockError::DeviceError)?;
+            packet = Packet::new_checked(&recv_buf[..nread])?;
+            if packet.op() != field::OP_SHUTDOWN && packet.op() != field::OP_RST {
+                break;
+            }
+        }
+    
         if packet.r#type() == field::TYPE_STREAM
             && packet.dst_cid() == self.local_addr.cid() as u64
             && packet.dst_port() == self.local_addr.port()
