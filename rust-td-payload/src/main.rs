@@ -334,7 +334,7 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
 
     init_heap(
         (hob_lib::get_system_memory_size_below_4gb(hob_list) as usize
-            - (TD_PAYLOAD_HOB_SIZE as usize + TD_PAYLOAD_STACK_SIZE as usize)
+            - (TD_PAYLOAD_HOB_SIZE + TD_PAYLOAD_STACK_SIZE + TD_PAYLOAD_EVENT_LOG_SIZE) as usize
             - TD_PAYLOAD_HEAP_SIZE as usize),
         TD_PAYLOAD_HEAP_SIZE as usize,
     );
