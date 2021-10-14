@@ -24,17 +24,13 @@ extern crate alloc;
 
 mod memslice;
 
+use benchmark::{init_heap, BenchmarkContext};
+
+use core::alloc::Layout;
+use rust_td_layout::runtime::*;
 use uefi_pi::pi::hob_lib;
 
-use rust_td_layout::runtime::*;
-
-use linked_list_allocator::LockedHeap;
-
 use alloc::{string::String, vec::Vec};
-
-#[cfg(not(test))]
-#[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 use core::panic::PanicInfo;
 
@@ -42,7 +38,10 @@ use core::ffi::c_void;
 
 use chrono::{serde::ts_seconds, DateTime, Duration, FixedOffset, TimeZone, Utc};
 use r_efi::efi::Guid;
-use serde::{de::Error, Deserialize, Deserializer, Serialize};
+use serde::{
+    de::{value::UsizeDeserializer, Error},
+    Deserialize, Deserializer, Serialize,
+};
 
 #[cfg(not(test))]
 #[panic_handler]
@@ -58,13 +57,6 @@ fn panic(_info: &PanicInfo) -> ! {
 fn alloc_error(_info: core::alloc::Layout) -> ! {
     log::info!("alloc_error ... {:?}\n", _info);
     panic!("deadloop");
-}
-
-fn init_heap(heap_start: usize, heap_size: usize) {
-    unsafe {
-        #[cfg(not(test))]
-        ALLOCATOR.lock().init(heap_start, heap_size);
-    }
 }
 
 fn json_test() {
@@ -339,11 +331,29 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
         TD_PAYLOAD_HEAP_SIZE as usize,
     );
 
-    //Test JSON function using no-std serd_json.
-    json_test();
+    let memory_layout = rust_td_layout::RuntimeMemoryLayout::new(
+        hob_lib::get_system_memory_size_below_4gb(hob_list),
+    );
+    assert_eq!(
+        (hob_lib::get_system_memory_size_below_4gb(hob_list) as usize
+            - (TD_PAYLOAD_HOB_SIZE + TD_PAYLOAD_STACK_SIZE + TD_PAYLOAD_EVENT_LOG_SIZE) as usize
+            - TD_PAYLOAD_HEAP_SIZE as usize) as u64,
+        memory_layout.runtime_heap_base
+    );
+
+    let mut bench = BenchmarkContext::new(memory_layout, "test");
+
+    bench.bench_start();
+
+    test_stack();
+
+    bench.bench_end();
 
     //Dump TD Report
     tdx_tdcall::tdreport::tdreport_dump();
+
+    //Test JSON function using no-std serd_json.
+    json_test();
 
     //Memory Protection (WP & NX) test.
     mp_test();
@@ -576,4 +586,21 @@ mod tests {
             serde_json::from_slice(bytes_config).expect("It is not a successful JSON test.");
         assert_eq!(zero, one);
     }
+}
+
+fn test_stack() {
+    let mut a = [0u8; 0x3000];
+    for i in a.iter_mut() {
+        *i = 0xcc;
+    }
+    let rsp: usize;
+    unsafe {
+        asm!("mov {}, rsp", out(reg) rsp);
+    }
+    log::info!("rsp_test: {:x}\n", rsp);
+    let mut b = vec![1u8, 2, 3, 4];
+    log::info!("test stack!!!!!!!!\n");
+    log::info!("a: {:x}\n", a.as_ptr() as usize);
+    log::info!("b: {:p}\n", &b);
+    log::info!("a: {:x?}\n", &a[0x1000..0x1800]);
 }

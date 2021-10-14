@@ -1,7 +1,7 @@
 cargo-features = ["resolver"]
 [workspace]
 
-members = ["rust-tdshim", "rust-td-payload", "rust-td-tool"]
+members = ["rust-tdshim", "rust-td-payload", "rust-td-tool", "benchmark"]
 
 default-members = ["rust-tdshim", "rust-td-payload"]
 resolver = "2"
