@@ -1,8 +1,9 @@
 // Copyright (c) 2020 Intel Corporation
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
-use goblin::elf::ProgramHeaders;
+use goblin::{elf::ProgramHeaders, elf32::section_header::SHT_INIT_ARRAY};
 use scroll::Pwrite;
+use core::ops::Range;
 
 const SIZE_4KB: u64 = 0x00001000u64;
 
@@ -21,7 +22,7 @@ pub fn is_elf(image: &[u8]) -> bool {
     goblin::elf::Elf::parse(image).is_ok()
 }
 
-pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, ProgramHeaders) {
+pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, ProgramHeaders, u64, u64) {
     let new_image_base = loaded_buffer as *const [u8] as *const u8 as usize;
     // parser file and get entry point
     let elf = goblin::elf::Elf::parse(image).unwrap();
@@ -39,6 +40,14 @@ pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, P
             }
         }
     }
+
+    let mut init_array_range: Range<usize> = 0..0;
+    for sh in elf.section_headers.as_slice() {
+        if sh.sh_type == SHT_INIT_ARRAY {
+            init_array_range = sh.vm_range();
+        }
+    }
+
     let mut bottom = bottom + new_image_base as u64;
     let mut top = top + new_image_base as u64;
     bottom = align_value(bottom, SIZE_4KB, true);
@@ -74,7 +83,9 @@ pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, P
         elf.entry + new_image_base as u64,
         bottom as u64,
         (top - bottom) as u64,
-        elf.program_headers
+        elf.program_headers,
+        init_array_range.start as u64 + loaded_buffer.as_ptr() as u64,
+        init_array_range.end as u64 + loaded_buffer.as_ptr() as u64,
     )
 }
 

@@ -28,14 +28,15 @@ pub fn efi_page_to_size(page: u64) -> u64 {
     page * SIZE_4KB
 }
 
-pub fn find_and_report_entry_point(mem: &mut Memory, fv_buffer: &[u8]) -> Option<(u64, u64, u64)> {
+pub fn find_and_report_entry_point(mem: &mut Memory, fv_buffer: &[u8]) -> Option<(u64, u64, u64, u64, u64)> {
     let image_buffer =
         fv_lib::get_image_from_fv(fv_buffer, fv::FV_FILETYPE_DXE_CORE, fv::SECTION_PE32).unwrap();
 
     let loaded_buffer = memslice::get_mem_slice_mut(memslice::SliceType::TdPayloadSlice);
+    loaded_buffer.fill(0);
 
     let res = if elf::is_elf(image_buffer) {
-        let (image_entry, image_base, image_size, program_headers) = elf::relocate_elf(image_buffer, loaded_buffer);
+        let (image_entry, image_base, image_size, program_headers, init_start, init_end) = elf::relocate_elf(image_buffer, loaded_buffer);
         for ph in program_headers {
             if !ph.is_executable() {
                 mem.set_nx_bit(ph.p_vaddr + loaded_buffer.as_ptr() as u64, ph.p_filesz);
@@ -45,7 +46,7 @@ pub fn find_and_report_entry_point(mem: &mut Memory, fv_buffer: &[u8]) -> Option
                 mem.set_write_protect(ph.p_vaddr + loaded_buffer.as_ptr() as u64, ph.p_filesz);
             }
         }
-        (image_entry, image_base, image_size)
+        (image_entry, image_base, image_size, init_start, init_end)
     } else if pe::is_pe(image_buffer) {
         let (image_entry, image_base, image_size, section_table) =
             pe::relocate_pe_mem(image_buffer, loaded_buffer);
@@ -57,7 +58,7 @@ pub fn find_and_report_entry_point(mem: &mut Memory, fv_buffer: &[u8]) -> Option
                 mem.set_write_protect(sc.vaddr + loaded_buffer.as_ptr() as u64, sc.size);
             }
         }
-        (image_entry, image_base, image_size)
+        (image_entry, image_base, image_size, 0, 0)
     } else {
         return None;
     };

@@ -42,8 +42,10 @@ const TD_REPORT_VERIFY_SIZE: usize = 1024;
 
 // #[link(name = "main")]
 // extern "C" {
-//     fn server_entry() -> i32;
-//     fn client_entry() -> i32;
+//     // fn server_entry() -> i32;
+//     // fn client_entry() -> i32;
+    
+//     fn constructor_test();
 // }
 
 #[link(name = "migtd_attest")]
@@ -82,9 +84,9 @@ fn init_payload_heap(heap_start: usize, heap_size: usize) {
 
 #[no_mangle]
 #[cfg_attr(target_os = "uefi", export_name = "efi_main")]
-pub extern "win64" fn _start(hob: *const c_void) -> ! {
+pub extern "win64" fn _start(hob: *const c_void, init: usize, init_size: usize) -> ! {
     let _ = tdx_logger::init();
-    log::info!("Starting rust-td-payload hob - {:p}\n", hob);
+    log::info!("Starting rust-td-payload hob - {:p}, init: {:x}, init_size: {:x}\n", hob, init, init_size);
 
     tdx_exception::setup_exception_handlers();
     log::info!("setup_exception_handlers done\n");
@@ -135,6 +137,16 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
 
     unsafe {
         init_heap (heap.as_mut_ptr() as *mut c_void, QUOTE_ATTESTATION_HEAP_SIZE as i32);
+        log::info!("init_heap done\n");
+
+        // Calling the init functions (like C++ constructors of global variables)
+        let mut init_start = init;
+        let init_end = init + init_size;
+        while init_start < init_end {
+            let init_fn = init_start as *const fn();
+            (*init_fn)();
+            init_start += 8;
+        }
 
         result = get_quote (td_report.as_ptr() as *mut c_void, tdreport::TD_REPORT_SIZE as i32, quote.as_mut_ptr() as *mut c_void, &mut quote_size as *mut i32);
         log::info!("get_quote result is {}\n", result);
