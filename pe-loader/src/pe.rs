@@ -375,56 +375,65 @@ fn reloc_to_base(
     }
 }
 
-// #[cfg(test)]
-// mod test {
-//     use std::vec;
+#[cfg(test)]
+mod test {
+    use std::vec;
 
-//     #[test]
-//     fn test_is_pe() {
-//         let image_bytes = include_bytes!("../../target/x86_64-unknown-uefi/release/rust-uefi-payload.efi");
-//         assert_eq!(super::is_pe(image_bytes), true);
+    #[test]
+    fn test_is_pe() {
+        let image_bytes =
+            include_bytes!("../../target/x86_64-unknown-uefi/release/rust-tdshim.efi");
 
-//     }
-//     #[test]
-//     fn test_sections() {
-//         use scroll::Pread;
-//         let pe_image = &include_bytes!("../../target/x86_64-unknown-uefi/release/rust-uefi-payload.efi")[..];
+        assert_eq!(super::is_pe(image_bytes), true);
+    }
+    #[test]
+    fn test_sections() {
+        use scroll::Pread;
+        let pe_image =
+            &include_bytes!("../../target/x86_64-unknown-uefi/release/rust-tdshim.efi")[..];
 
-//         let pe_header_offset = pe_image.pread::<u32>(0x3c).unwrap() as usize;
-//         let pe_region = &pe_image[pe_header_offset..];
+        let pe_header_offset = pe_image.pread::<u32>(0x3c).unwrap() as usize;
+        let pe_region = &pe_image[pe_header_offset..];
 
-//         let num_sections = pe_region.pread::<u16>(6).unwrap() as usize;
-//         let optional_header_size = pe_region.pread::<u16>(20).unwrap() as usize;
-//         let optional_region = &pe_image[24 + pe_header_offset..];
+        let num_sections = pe_region.pread::<u16>(6).unwrap() as usize;
+        let optional_header_size = pe_region.pread::<u16>(20).unwrap() as usize;
+        let optional_region = &pe_image[24 + pe_header_offset..];
 
-//         // check optional_hdr64_magic
-//         assert_eq!(optional_region.pread::<u16>(0).unwrap(), super::OPTIONAL_HDR64_MAGIC);
+        // check optional_hdr64_magic
+        assert_eq!(
+            optional_region.pread::<u16>(0).unwrap(),
+            super::OPTIONAL_HDR64_MAGIC
+        );
 
-//         let entry_point = optional_region.pread::<u32>(16).unwrap();
-//         let image_base = optional_region.pread::<u64>(24).unwrap();
+        let entry_point = optional_region.pread::<u32>(16).unwrap();
+        let image_base = optional_region.pread::<u64>(24).unwrap();
 
-//         let sections_buffer = &pe_image[(24 + pe_header_offset + optional_header_size)..];
+        let sections_buffer = &pe_image[(24 + pe_header_offset + optional_header_size)..];
 
-//         let _total_header_size =
-//             (24 + pe_header_offset + optional_header_size + num_sections * 40) as usize;
+        let _total_header_size =
+            (24 + pe_header_offset + optional_header_size + num_sections * 40) as usize;
 
-//         let sections = super::Sections::parse(sections_buffer, num_sections as usize).unwrap();
-//         println!("entry_point: {:x}", entry_point);
-//         println!("image_base: {:x}", image_base);
-//         for section in sections {
-//             println!("{:?}", section)
-//         }
-//         println!("entry: {:x?}", &pe_image[0xf8e0..0xf9e0])
-//     }
+        let sections = super::Sections::parse(sections_buffer, num_sections as usize).unwrap();
+        println!("entry_point: {:x}", entry_point);
+        println!("image_base: {:x}", image_base);
+        for section in sections {
+            println!("{:?}", section)
+        }
+        println!("entry: {:x?}", &pe_image[0xf8e0..0xf9e0])
+    }
 
-//     #[test]
-//     fn test_relocate() {
-//         use simple_logger::SimpleLogger;
-//         SimpleLogger::new().with_level(log::LevelFilter::Trace).init().unwrap();
-//         let pe_image = &include_bytes!("../../target/x86_64-unknown-uefi/release/rust-uefi-payload.efi")[..];
+    #[test]
+    fn test_relocate() {
+        use simple_logger::SimpleLogger;
+        SimpleLogger::new()
+            .with_level(log::LevelFilter::Trace)
+            .init()
+            .unwrap();
+        let pe_image =
+            &include_bytes!("../../target/x86_64-unknown-uefi/release//rust-tdshim.efi")[..];
 
-//         let mut loaded_buffer = vec![0u8; 0x800000];
+        let mut loaded_buffer = vec![0u8; 0x800000];
 
-//         super::relocate(pe_image, loaded_buffer.as_mut_slice(), 0x100000);
-//     }
-// }
+        super::relocate(pe_image, loaded_buffer.as_mut_slice(), 0x100000);
+    }
+}

@@ -93,3 +93,23 @@ fn align_value(value: u64, align: u64, flag: bool) -> u64 {
         value - (value & (align - 1)) as u64 + align
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::vec;
+
+    #[test]
+    fn test_is_elf() {
+        let image_bytes = include_bytes!("../../target/target/release/rust-td-payload");
+
+        assert_eq!(super::is_elf(image_bytes), true);
+    }
+    #[test]
+    fn test_relocate() {
+        let pe_image = &include_bytes!("../../target/target/release/rust-td-payload")[..];
+
+        let mut loaded_buffer = vec![0u8; 0x800000];
+
+        super::relocate_elf_with_per_program_header(pe_image, loaded_buffer.as_mut_slice(), |_| ());
+    }
+}
