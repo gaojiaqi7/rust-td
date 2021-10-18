@@ -15,7 +15,7 @@ mod mp;
 mod tcg;
 
 extern "win64" {
-    fn switch_stack_call(entry_point: usize, stack_top: usize, P1: usize, P2: usize, INIT: usize);
+    fn switch_stack_call(entry_point: usize, stack_top: usize, P1: usize, P2: usize);
 }
 
 mod asm;
@@ -329,7 +329,7 @@ pub extern "win64" fn _start(
         resource_length: 0x80000u64 + 0x20000u64,
     };
 
-    let (entry, basefw, basefwsize, init_start, init_end) = ipl::find_and_report_entry_point(&mut mem, fv_buffer).unwrap();
+    let (entry, basefw, basefwsize) = ipl::find_and_report_entry_point(&mut mem, fv_buffer).unwrap();
     let entry = entry as usize;
 
     const PAYLOAD_NAME_GUID: efi::Guid = efi::Guid::from_fields(
@@ -386,8 +386,7 @@ pub extern "win64" fn _start(
     );
 
     unsafe {
-        let init_size = init_end - init_start;
-        switch_stack_call(entry, stack_top, td_payload_hob_base as usize, init_start as usize, init_size as usize);
+        switch_stack_call(entry, stack_top, td_payload_hob_base as usize, 0);
     }
 
     loop {}

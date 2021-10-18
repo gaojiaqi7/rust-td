@@ -10,11 +10,13 @@
 #[macro_use]
 extern crate alloc;
 use uefi_pi::pi::hob_lib;
-
+use r_uefi_pi::fv;
 use rust_td_layout::runtime::*;
 use rust_td_layout::RuntimeMemoryLayout;
 
 use linked_list_allocator::LockedHeap;
+
+use uefi_pi::fv_lib;
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -25,6 +27,8 @@ use core::ffi::c_void;
 
 use alloc::boxed::Box;
 use tdx_tdcall::tdreport;
+
+use elf_loader::elf;
 
 #[allow(unused)]
 mod platform;
@@ -82,11 +86,43 @@ fn init_payload_heap(heap_start: usize, heap_size: usize) {
     );
 }
 
+fn call_init(image: &[u8], payload_base: usize){
+    // Call the init functions (contains C++ constructions of global variables)
+    match elf::parse_init_array_section(image) {
+        Some(range) => {
+            let mut init_start = payload_base as usize + range.start;
+            let init_end = payload_base as usize + range.end;
+            while init_start < init_end {
+                let init_fn = init_start as *const fn();
+                unsafe {(*init_fn)()};
+                init_start += 8;
+            }
+        },
+        None => {}
+    }
+}
+
+fn call_finit(image: &[u8], payload_base: usize){
+    // Call the termination functions (contains C++ destructions of global variables)
+    match elf::parse_finit_array_section(image) {
+        Some(range) => {
+            let mut finit_start = payload_base as usize + range.start;
+            let finit_end = payload_base as usize + range.end;
+            while finit_start < finit_end {
+                let finit_fn = finit_start as *const fn();
+                unsafe {(*finit_fn)()};
+                finit_start += 8;
+            }
+        },
+        None => {}
+    }
+}
+
 #[no_mangle]
 #[cfg_attr(target_os = "uefi", export_name = "efi_main")]
-pub extern "win64" fn _start(hob: *const c_void, init: usize, init_size: usize) -> ! {
+pub extern "win64" fn _start(hob: *const c_void) -> ! {
     let _ = tdx_logger::init();
-    log::info!("Starting rust-td-payload hob - {:p}, init: {:x}, init_size: {:x}\n", hob, init, init_size);
+    log::info!("Starting rust-td-payload hob - {:p}\n", hob);
 
     tdx_exception::setup_exception_handlers();
     log::info!("setup_exception_handlers done\n");
@@ -122,7 +158,21 @@ pub extern "win64" fn _start(hob: *const c_void, init: usize, init_size: usize) 
 
     vsock_impl::init_vsock_device();
 
-    let mut heap: Box<[u8; QUOTE_ATTESTATION_HEAP_SIZE]> =Box::new([0; QUOTE_ATTESTATION_HEAP_SIZE]);
+    let fv_hob = hob_lib::get_fv(hob).unwrap();
+    let fv_buffer: &[u8] = unsafe {
+        core::slice::from_raw_parts(
+            fv_hob.base_address as *const u8,
+            fv_hob.length as usize
+        )
+    };
+
+    let image_buffer = fv_lib::get_image_from_fv(
+        fv_buffer,
+        fv::FV_FILETYPE_DXE_CORE,
+        fv::SECTION_PE32
+    ).unwrap();
+
+    let mut heap: Box<[u8; QUOTE_ATTESTATION_HEAP_SIZE]> = Box::new([0; QUOTE_ATTESTATION_HEAP_SIZE]);
 
     let additional_data: [u8;tdreport::TD_REPORT_ADDITIONAL_DATA_SIZE] = [0;tdreport::TD_REPORT_ADDITIONAL_DATA_SIZE];
 
@@ -136,24 +186,40 @@ pub extern "win64" fn _start(hob: *const c_void, init: usize, init_size: usize) 
     let mut result;
 
     unsafe {
-        init_heap (heap.as_mut_ptr() as *mut c_void, QUOTE_ATTESTATION_HEAP_SIZE as i32);
-        log::info!("init_heap done\n");
+        init_heap (
+            heap.as_mut_ptr() as *mut c_void,
+            QUOTE_ATTESTATION_HEAP_SIZE as i32
+        );
+    }
+    log::info!("init_heap done\n");
 
-        // Calling the init functions (like C++ constructors of global variables)
-        let mut init_start = init;
-        let init_end = init + init_size;
-        while init_start < init_end {
-            let init_fn = init_start as *const fn();
-            (*init_fn)();
-            init_start += 8;
-        }
+    call_init(
+        image_buffer,
+        runtime_memory_layout.runtime_payload_base as usize
+    );
 
-        result = get_quote (td_report.as_ptr() as *mut c_void, tdreport::TD_REPORT_SIZE as i32, quote.as_mut_ptr() as *mut c_void, &mut quote_size as *mut i32);
+    unsafe {
+        result = get_quote(
+            td_report.as_ptr() as *mut c_void,
+            tdreport::TD_REPORT_SIZE as i32,
+            quote.as_mut_ptr() as *mut c_void,
+            &mut quote_size as *mut i32
+        );
         log::info!("get_quote result is {}\n", result);
 
-        result = verify_quote_integrity(quote.as_ptr() as *mut c_void, quote_size, td_report_verify.as_mut_ptr() as *mut c_void, &mut report_verify_size as *mut i32);
+        result = verify_quote_integrity(
+            quote.as_ptr() as *mut c_void,
+            quote_size,
+            td_report_verify.as_mut_ptr() as *mut c_void,
+            &mut report_verify_size as *mut i32
+        );
         log::info!("verify_quote_integrity result is {}\n", result);
     }
+
+    call_finit(
+        image_buffer,
+        runtime_memory_layout.runtime_payload_base as usize
+    );
 
     loop {}
 }

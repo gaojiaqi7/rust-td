@@ -1,7 +1,7 @@
 // Copyright (c) 2020 Intel Corporation
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
-use goblin::{elf::ProgramHeaders, elf32::section_header::SHT_INIT_ARRAY};
+use goblin::{elf::ProgramHeaders, elf32::section_header::{SHT_INIT_ARRAY, SHT_FINI_ARRAY}};
 use scroll::Pwrite;
 use core::ops::Range;
 
@@ -22,7 +22,7 @@ pub fn is_elf(image: &[u8]) -> bool {
     goblin::elf::Elf::parse(image).is_ok()
 }
 
-pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, ProgramHeaders, u64, u64) {
+pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, ProgramHeaders) {
     let new_image_base = loaded_buffer as *const [u8] as *const u8 as usize;
     // parser file and get entry point
     let elf = goblin::elf::Elf::parse(image).unwrap();
@@ -38,13 +38,6 @@ pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, P
             if top < ph.p_vaddr + ph.p_memsz {
                 top = ph.p_vaddr + ph.p_memsz;
             }
-        }
-    }
-
-    let mut init_array_range: Range<usize> = 0..0;
-    for sh in elf.section_headers.as_slice() {
-        if sh.sh_type == SHT_INIT_ARRAY {
-            init_array_range = sh.vm_range();
         }
     }
 
@@ -84,9 +77,31 @@ pub fn relocate_elf(image: &[u8], loaded_buffer: &mut [u8]) -> (u64, u64, u64, P
         bottom as u64,
         (top - bottom) as u64,
         elf.program_headers,
-        init_array_range.start as u64 + loaded_buffer.as_ptr() as u64,
-        init_array_range.end as u64 + loaded_buffer.as_ptr() as u64,
     )
+}
+
+pub fn parse_init_array_section(image: &[u8]) -> Option<Range<usize>> {
+    // parser file and get the .init_array section, if any
+    let elf = goblin::elf::Elf::parse(image).unwrap();
+
+    for sh in elf.section_headers.as_slice() {
+        if sh.sh_type == SHT_INIT_ARRAY {
+            return Some(sh.vm_range());
+        }
+    }
+    None
+}
+
+pub fn parse_finit_array_section(image: &[u8]) -> Option<Range<usize>> {
+    // parser file and get the .finit_array section, if any
+    let elf = goblin::elf::Elf::parse(image).unwrap();
+
+    for sh in elf.section_headers.as_slice() {
+        if sh.sh_type == SHT_FINI_ARRAY {
+            return Some(sh.vm_range());
+        }
+    }
+    None
 }
 
 /// flag  ture align to low address else high address

@@ -24,6 +24,7 @@ tdx-tdcall = { path = "../../rust-td/tdx-tdcall" }
 tdx-logger =  { path = "../../rust-td/tdx-logger" }
 tdx-exception =  { path = "../../rust-td/tdx-exception" }
 rust-td-layout = { path = "../../rust-td/rust-td-layout" }
+elf-loader = { path = "../../rust-td/elf-loader" }
 
 conquer-once = { version = "0.3.2", default-features = false }
 
