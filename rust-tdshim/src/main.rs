@@ -101,7 +101,7 @@ struct TdxHandoffTablePointers {
     table_entry: [ConfigurationTable; 1],
 }
 
-fn log_hob_list(hob_list: &[u8]) {
+fn log_hob_list(hob_list: &[u8], td_event_log: &mut tcg::TdEventLog) {
     hob_lib::dump_hob(hob_list);
 
     let hand_off_table_pointers = TdxHandoffTablePointers {
@@ -120,7 +120,7 @@ fn log_hob_list(hob_list: &[u8]) {
         .pwrite(hand_off_table_pointers, 0)
         .unwrap();
 
-    tcg::create_td_event(
+    td_event_log.create_td_event(
         1,
         EV_EFI_HANDOFF_TABLES2,
         &tdx_handofftable_pointers_buffer,
@@ -169,11 +169,17 @@ pub extern "win64" fn _start(
     let memory_bottom = runtime_memorey_layout.runtime_memory_bottom;
     let td_payload_hob_base = runtime_memorey_layout.runtime_hob_base;
     let td_payload_stack_base = runtime_memorey_layout.runtime_stack_base;
+    let td_event_log_base = runtime_memorey_layout.runtime_event_log_base;
 
     heap::init();
     paging::init();
 
-    log_hob_list(hob_list);
+    let mut td_event_log = tcg::TdEventLog::init(memslice::get_dynamic_mem_slice_mut(
+        SliceType::EventLog,
+        td_event_log_base as usize,
+    ));
+
+    log_hob_list(hob_list, &mut td_event_log);
 
     let fv_buffer = memslice::get_mem_slice(memslice::SliceType::ShimPayload);
     let _hob_buffer = memslice::get_mem_slice(memslice::SliceType::ShimHob);
