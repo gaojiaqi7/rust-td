@@ -29,6 +29,10 @@ cargo test
 
 # Generate a HTML report in the coverage/ directory.
 grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing -o ./target/debug/coverage/
+
+# Unset RUSTFLAGS and LLVM_PROFILE_FILE environment variable
+unset RUSTFLAGS
+unset LLVM_PROFILE_FILE
 ```
 
 # View report:

@@ -24,6 +24,7 @@ extern crate alloc;
 
 mod memslice;
 
+#[cfg(not(test))]
 use benchmark::{init_heap, BenchmarkContext};
 
 use core::alloc::Layout;
