@@ -11,7 +11,6 @@ use std::fs::File;
 use std::io::Write;
 
 use pe_loader::pe;
-use simple_logger::SimpleLogger;
 
 use r_efi::efi::Guid;
 use r_uefi_pi::fv::*;
@@ -405,13 +404,13 @@ fn build_tdx_mpwakeup_mailbox(mailbox: &mut [u8]) {
 }
 
 fn main() -> std::io::Result<()> {
-    use log::LevelFilter;
-    SimpleLogger::new()
-        .with_level(LevelFilter::Info)
-        .init()
-        .unwrap();
-    let args: Vec<String> = env::args().collect();
+    use env_logger::Env;
+    let env = Env::default()
+        .filter_or("MY_LOG_LEVEL", "info")
+        .write_style_or("MY_LOG_STYLE", "always");
+    env_logger::init_from_env(env);
 
+    let args: Vec<String> = env::args().collect();
     let reset_vector_name = &args[1];
     let rust_ipl_name = &args[2];
     let rust_payload_name = &args[3];

@@ -424,11 +424,13 @@ mod test {
 
     #[test]
     fn test_relocate() {
-        use simple_logger::SimpleLogger;
-        SimpleLogger::new()
-            .with_level(log::LevelFilter::Trace)
-            .init()
-            .unwrap();
+        use env_logger::Env;
+        let env = Env::default()
+            .filter_or("MY_LOG_LEVEL", "trace")
+            .write_style_or("MY_LOG_STYLE", "always");
+
+        env_logger::init_from_env(env);
+
         let pe_image =
             &include_bytes!("../../target/x86_64-unknown-uefi/release//rust-tdshim.efi")[..];
 
