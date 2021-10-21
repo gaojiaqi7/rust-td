@@ -632,3 +632,25 @@ impl<'a> Elf<'a> {
         Some(relocs)
     }
 }
+
+#[cfg(test)]
+mod test_elf_loader {
+
+    #[test]
+    fn test_parse() {
+        let pe_image = &include_bytes!("../../target/target/release/rust-td-payload")[..];
+
+        let elf = crate::elf64::Elf::parse(pe_image).unwrap();
+
+        let obj = elf.program_headers().next().unwrap();
+        println!("{:?}\n", obj);
+    }
+
+    #[test]
+    fn test_dynamic_info() {
+        let pe_image = &include_bytes!("../../target/target/release/rust-td-payload")[..];
+        let elf = crate::elf64::Elf::parse(pe_image).unwrap();
+
+        elf.relocations().unwrap();
+    }
+}

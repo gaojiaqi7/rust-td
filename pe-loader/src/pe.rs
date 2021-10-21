@@ -377,14 +377,40 @@ fn reloc_to_base(
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use std::vec;
 
     #[test]
     fn test_is_pe() {
         let image_bytes =
             include_bytes!("../../target/x86_64-unknown-uefi/release/rust-tdshim.efi");
+        let mut status = is_pe(image_bytes);
+        assert_eq!(status, true);
 
-        assert_eq!(super::is_pe(image_bytes), true);
+        let image_bytes = &mut [0u8; 10][..];
+        status = is_pe(image_bytes);
+        assert_eq!(status, false);
+
+        let image_bytes = &mut [0u8; 0x55][..];
+        status = is_pe(image_bytes);
+        assert_eq!(status, false);
+
+        image_bytes[0] = 0x4du8;
+        image_bytes[1] = 0x5au8;
+        status = is_pe(image_bytes);
+        assert_eq!(status, false);
+
+        image_bytes[0x3c] = 0x10;
+        image_bytes[0x10] = 0x50;
+        image_bytes[0x11] = 0x45;
+        image_bytes[0x12] = 0x00;
+        image_bytes[0x13] = 0x00;
+        status = is_pe(image_bytes);
+        assert_eq!(status, false);
+
+        image_bytes[0x3c] = 0xAA;
+        status = is_pe(image_bytes);
+        assert_eq!(status, false);
     }
     #[test]
     fn test_sections() {
@@ -423,7 +449,7 @@ mod test {
     }
 
     #[test]
-    fn test_relocate() {
+    fn test_relocate_pe_mem_with_per_sections() {
         use env_logger::Env;
         let env = Env::default()
             .filter_or("MY_LOG_LEVEL", "trace")
@@ -434,8 +460,13 @@ mod test {
         let pe_image =
             &include_bytes!("../../target/x86_64-unknown-uefi/release//rust-tdshim.efi")[..];
 
-        let mut loaded_buffer = vec![0u8; 0x800000];
+        let mut loaded_buffer = vec![0u8; 0x200000];
 
-        super::relocate(pe_image, loaded_buffer.as_mut_slice(), 0x100000);
+        let (image_entry, image_base, image_size) = super::relocate_pe_mem_with_per_sections(
+            pe_image,
+            loaded_buffer.as_mut_slice(),
+            |_| (),
+        );
+        println!(" 0x:{:x}\n 0x:{:x}\n 0x:{:x}\n",image_entry, image_base, image_size );
     }
 }

@@ -1,12 +1,14 @@
 #!/bin/bash
-cargo clean
-
 git clean -f
 
 export RUSTFLAGS="-Zinstrument-coverage"
 export LLVM_PROFILE_FILE="your_name-%p-%m.profraw" 
 
 cd ./pe-loader
+cargo test 
+cd ..
+
+cd ./elf-loader
 cargo test 
 cd ..
 

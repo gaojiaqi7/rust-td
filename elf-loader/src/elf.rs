@@ -95,7 +95,7 @@ fn align_value(value: u64, align: u64, flag: bool) -> u64 {
 }
 
 #[cfg(test)]
-mod test {
+mod test_elf_loader {
     use std::vec;
 
     #[test]
