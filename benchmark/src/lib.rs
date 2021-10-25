@@ -98,8 +98,8 @@ impl BenchmarkContext {
         log::info!("rsp_start: {:x}\n", rsp);
         let stack_buffer = unsafe {
             core::slice::from_raw_parts_mut(
-                0x7F000000 as *const u8 as *mut u8,
-                rsp - 0x7F000000usize - 0x20usize,
+                0x7F002000 as *const u8 as *mut u8,
+                rsp - 0x7F002000usize - 0x20usize,
             )
         };
 
@@ -121,8 +121,8 @@ impl BenchmarkContext {
         log::info!("rsp_end: {:x}\n", rsp);
         let stack_buffer = unsafe {
             core::slice::from_raw_parts_mut(
-                0x7F000000 as *const u8 as *mut u8,
-                rsp - 0x7F000000usize - 0x20usize,
+                0x7F002000 as *const u8 as *mut u8,
+                rsp - 0x7F002000usize - 0x20usize,
             )
         };
 
