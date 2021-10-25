@@ -1,4 +1,9 @@
 #!/bin/bash
+
+if [[ ! $PWD =~ rust-td$ ]];then
+    pushd ..
+fi
+
 git clean -f
 
 export RUSTFLAGS="-Zinstrument-coverage"

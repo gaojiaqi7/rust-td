@@ -3,6 +3,9 @@
 export CC=clang
 export AR=llvm-ar
 
+if [[ ! $PWD =~ rust-td$ ]];then
+    pushd ..
+fi
 cargo xbuild -p rust-tdshim --target x86_64-unknown-uefi --release
 pushd rust-td-payload
 cargo xbuild --target x86_64-unknown-uefi --release

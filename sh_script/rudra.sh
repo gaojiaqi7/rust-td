@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [[ ! $PWD =~ rust-td$ ]];then
+    pushd ..
+fi
+
 type rudra
 
 if [[ $? != 0 ]]; then
