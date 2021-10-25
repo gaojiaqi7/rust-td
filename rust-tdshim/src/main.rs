@@ -14,6 +14,7 @@ mod ipl;
 mod memory;
 mod memslice;
 mod mp;
+mod stack_guard;
 mod tcg;
 
 extern "win64" {
@@ -246,7 +247,8 @@ pub extern "win64" fn _start(
         alloc_descriptor: hob::MemoryAllocationHeader {
             name: *MEMORY_ALLOCATION_STACK_GUID.as_bytes(),
             memory_base_address: td_payload_stack_base as u64,
-            memory_length: TD_PAYLOAD_STACK_SIZE as u64,
+            memory_length: TD_PAYLOAD_STACK_SIZE as u64
+                - (stack_guard::STACK_GUARD_PAGE_SIZE + stack_guard::STACK_EXCEPTION_PAGE_SIZE),
             memory_type: efi::MemoryType::BootServicesData as u32,
             reserved: [0u8; 4],
         },
@@ -385,6 +387,8 @@ pub extern "win64" fn _start(
     let hob_slice =
         memslice::get_dynamic_mem_slice_mut(SliceType::PayloadHob, td_payload_hob_base as usize);
     let _res = hob_slice.pwrite(hob_template, 0);
+
+    stack_guard::stack_guard_enable(&mut mem);
 
     let stack_top = (td_payload_stack_base + TD_PAYLOAD_STACK_SIZE as u64) as usize;
     log::info!(
