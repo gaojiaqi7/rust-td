@@ -7,8 +7,8 @@
 #![feature(naked_functions)]
 #![feature(global_asm)]
 
-mod asm;
-mod idt;
+pub mod asm;
+pub mod idt;
 mod interrupt;
 
 pub fn setup_exception_handlers() {

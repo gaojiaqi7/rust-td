@@ -7,11 +7,12 @@ use core::mem;
 use crate::interrupt;
 
 use bitflags::bitflags;
+use core::{mem::size_of, slice::from_raw_parts_mut};
 use lazy_static::lazy_static;
 
-// extern "win64" {
-//     fn sidt_call(addr: usize);
-// }
+extern "win64" {
+    fn sidt_call(addr: usize);
+}
 
 extern "win64" {
     fn lidt_call(addr: usize);
@@ -46,11 +47,10 @@ pub unsafe fn init() {
 }
 
 pub type IdtEntries = [IdtEntry; 256];
-
 // 8 alignment required
 #[repr(C, align(8))]
 pub struct Idt {
-    entries: IdtEntries,
+    pub entries: IdtEntries,
 }
 
 impl Default for Idt {
@@ -146,5 +146,32 @@ impl IdtEntry {
     pub fn set_func(&mut self, func: unsafe extern "C" fn()) {
         self.set_flags(IdtFlags::PRESENT | IdtFlags::RING_0 | IdtFlags::INTERRUPT);
         self.set_offset(unsafe { read_cs_call() }, func as usize); // GDT_KERNEL_CODE 1u16
+    }
+
+    pub fn set_ist(&mut self, index: u8) {
+        // IST: [2..0] of field zero
+        self.zero = 0x07 & index;
+    }
+}
+
+pub fn read_idt(idtr: &DescriptorTablePointer) -> &'static mut [IdtEntry] {
+    unsafe {
+        let addr = idtr.base as *mut IdtEntry;
+        let size = (idtr.limit + 1) as usize / size_of::<IdtEntry>();
+        from_raw_parts_mut(addr, size)
+    }
+}
+
+pub fn store_idtr() -> DescriptorTablePointer {
+    let mut idtr = DescriptorTablePointer { limit: 0, base: 0 };
+    unsafe {
+        sidt_call(&mut idtr as *mut DescriptorTablePointer as usize);
+    }
+    idtr
+}
+
+pub fn load_idtr(idtr: &DescriptorTablePointer) {
+    unsafe {
+        lidt_call(idtr as *const DescriptorTablePointer as usize);
     }
 }
