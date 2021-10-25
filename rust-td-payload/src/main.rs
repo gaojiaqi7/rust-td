@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #![allow(unused)]
+#![feature(global_asm)]
 #![feature(asm)]
 #![feature(alloc_error_handler)]
 #![cfg_attr(not(test), no_std)]
@@ -22,6 +23,7 @@
 #[macro_use]
 extern crate alloc;
 
+mod asm;
 mod memslice;
 
 #[cfg(not(test))]
@@ -43,6 +45,10 @@ use serde::{
     de::{value::UsizeDeserializer, Error},
     Deserialize, Deserializer, Serialize,
 };
+
+extern "win64" {
+    fn stack_guard_test();
+}
 
 #[cfg(not(test))]
 #[panic_handler]
@@ -311,7 +317,6 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
     tdx_logger::init();
     log::info!("Starting rust-td-payload hob - {:p}\n", hob);
 
-    tdx_exception::setup_exception_handlers();
     log::info!("setup_exception_handlers done\n");
 
     // let hob_buffer = unsafe {
@@ -355,6 +360,9 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
 
     //Test JSON function using no-std serd_json.
     json_test();
+
+    //Stack guard test
+    unsafe { stack_guard_test() };
 
     //Memory Protection (WP & NX) test.
     mp_test();
