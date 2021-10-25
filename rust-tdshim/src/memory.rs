@@ -23,8 +23,8 @@ const EXTENDED_FUNCTION_INFO: u32 = 0x80000000;
 const EXTENDED_PROCESSOR_INFO: u32 = 0x80000001;
 
 pub struct Memory<'a> {
+    pub layout: &'a RuntimeMemoryLayout,
     pt: OffsetPageTable<'a>,
-    layout: &'a RuntimeMemoryLayout,
     memory_size: u64,
 }
 
@@ -100,7 +100,7 @@ impl<'a> Memory<'a> {
             &mut self.pt,
             PhysAddr::new(self.layout.runtime_heap_base),
             VirtAddr::new(self.layout.runtime_heap_base),
-            paging::PAGE_SIZE_DEFAULT as u64,
+            paging::PAGE_SIZE_4K as u64,
             runtime_memory_top - self.layout.runtime_heap_base,
             with_nx_flags,
         );
@@ -135,6 +135,12 @@ impl<'a> Memory<'a> {
 
     pub fn set_nx_bit(&mut self, address: u64, size: u64) {
         let flags = Flags::PRESENT | Flags::WRITABLE | Flags::USER_ACCESSIBLE | Flags::NO_EXECUTE;
+
+        paging::paging::set_page_flags(&mut self.pt, VirtAddr::new(address), size as i64, flags);
+    }
+
+    pub fn set_not_present(&mut self, address: u64, size: u64) {
+        let flags: Flags = Flags::empty();
 
         paging::paging::set_page_flags(&mut self.pt, VirtAddr::new(address), size as i64, flags);
     }
