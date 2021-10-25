@@ -34,8 +34,8 @@ impl ScratchRegisters {
 
 macro_rules! scratch_push {
     () => {
-        asm!(
-            "push rax
+        "
+        push rax
         push rcx
         push rdx
         push rdi
@@ -43,15 +43,15 @@ macro_rules! scratch_push {
         push r8
         push r9
         push r10
-        push r11"
-        )
+        push r11
+    "
     };
 }
 
 macro_rules! scratch_pop {
     () => {
-        asm!(
-            "pop r11
+        "
+        pop r11
         pop r10
         pop r9
         pop r8
@@ -59,8 +59,8 @@ macro_rules! scratch_pop {
         pop rdi
         pop rdx
         pop rcx
-        pop rax"
-        )
+        pop rax
+    "
     };
 }
 
@@ -88,27 +88,27 @@ impl PreservedRegisters {
 
 macro_rules! preserved_push {
     () => {
-        asm!(
-            "push rbx
+        "
+        push rbx
         push rbp
         push r12
         push r13
         push r14
-        push r15"
-        )
+        push r15
+    "
     };
 }
 
 macro_rules! preserved_pop {
     () => {
-        asm!(
-            "pop r15
+        "
+        pop r15
         pop r14
         pop r13
         pop r12
         pop rbp
-        pop rbx"
-        )
+        pop rbx
+    "
     };
 }
 
@@ -126,12 +126,6 @@ impl IretRegisters {
         log::info!("CS:    {:>016X}\n", { self.cs });
         log::info!("RIP:   {:>016X}\n", { self.rip });
     }
-}
-
-macro_rules! iret {
-    () => {
-        asm!("iretq")
-    };
 }
 
 #[allow(dead_code)]
@@ -175,28 +169,25 @@ macro_rules! interrupt_no_error {
         #[no_mangle]
         pub unsafe extern fn $name () {
             #[inline(never)]
-            unsafe fn inner($stack: &mut InterruptNoErrorStack) {
+            unsafe extern "win64" fn inner($stack: &mut InterruptNoErrorStack) {
                 $func
             }
 
             // Push scratch registers
-            scratch_push!();
-            preserved_push!();
-
-            // Get reference to stack variables
-            let rsp: usize;
-            asm!("mov {}, rsp", out(reg) rsp);
-            asm!("cld");
-
-            // Call inner rust function
-            asm!("sub rsp, 32");
-            inner(&mut *(rsp as *mut InterruptNoErrorStack));
-            asm!("add rsp, 32");
-
-            // Pop scratch registers and return
-            preserved_pop!();
-            scratch_pop!();
-            iret!();
+            asm!( concat!(
+                scratch_push!(),
+                preserved_push!(),
+                "
+                mov rcx, rsp
+                call {inner}
+                ",
+                preserved_pop!(),
+                scratch_pop!(),
+                "iret"
+                ),
+                inner = sym inner,
+                options(noreturn),
+            )
         }
     };
 }
@@ -208,27 +199,27 @@ macro_rules! interrupt_error {
         #[no_mangle]
         pub unsafe extern fn $name () {
             #[inline(never)]
-            unsafe fn inner($stack: &mut InterruptErrorStack) {
+            unsafe extern "win64" fn inner($stack: &mut InterruptErrorStack) {
                 $func
             }
-
             // Push scratch registers
-            scratch_push!();
-            preserved_push!();
-
-            // Get reference to stack variables
-            let rsp: usize;
-            asm!("mov {}, rsp", out(reg) rsp);
-
-            // Call inner rust function
-            asm!("sub rsp, 40");
-            inner(&mut *(rsp as *mut InterruptErrorStack));
-            asm!("add rsp, 40");
-            // Pop scratch registers, error code, and return
-            preserved_pop!();
-            scratch_pop!();
-            asm!("add rsp, 8");
-            iret!();
+            asm!( concat!(
+                scratch_push!(),
+                preserved_push!(),
+                "
+                mov rcx, rsp
+                call {inner}
+                ",
+                preserved_pop!(),
+                scratch_pop!(),
+                "
+                add rsp, 8
+                iret
+                "
+                ),
+                inner = sym inner,
+                options(noreturn),
+            )
         }
     };
 }
