@@ -32,6 +32,9 @@ pub struct DescriptorTablePointer {
 }
 
 #[no_mangle]
+/// # Safety
+///
+/// This function is unsafe because of the lidt_call()
 pub unsafe fn init() {
     let mut idtr = DescriptorTablePointer { limit: 1, base: 0 };
 
@@ -48,6 +51,12 @@ pub type IdtEntries = [IdtEntry; 256];
 #[repr(C, align(8))]
 pub struct Idt {
     entries: IdtEntries,
+}
+
+impl Default for Idt {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Idt {
