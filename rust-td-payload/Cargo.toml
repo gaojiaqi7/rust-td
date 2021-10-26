@@ -8,6 +8,7 @@ authors = [
 edition = "2018"
 
 [features]
+cet-ss = []
 # add build process
 # build = "build.rs"
 
