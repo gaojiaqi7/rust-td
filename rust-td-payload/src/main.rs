@@ -48,6 +48,10 @@ use serde::{
 
 extern "win64" {
     fn stack_guard_test();
+
+    #[cfg(feature = "cet-ss")]
+    #[allow(unused)]
+    fn cet_ss_test(count: usize);
 }
 
 #[cfg(not(test))]
@@ -342,7 +346,10 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
     );
     assert_eq!(
         (hob_lib::get_system_memory_size_below_4gb(hob_list) as usize
-            - (TD_PAYLOAD_HOB_SIZE + TD_PAYLOAD_STACK_SIZE + TD_PAYLOAD_EVENT_LOG_SIZE) as usize
+            - (TD_PAYLOAD_HOB_SIZE
+                + TD_PAYLOAD_STACK_SIZE
+                + TD_PAYLOAD_SHADOW_STACK_SIZE
+                + TD_PAYLOAD_EVENT_LOG_SIZE) as usize
             - TD_PAYLOAD_HEAP_SIZE as usize) as u64,
         memory_layout.runtime_heap_base
     );
@@ -366,6 +373,12 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
 
     //Memory Protection (WP & NX) test.
     mp_test();
+
+    // Cet is not enabled by vcpu for now
+    #[cfg(feature = "cet-ss")]
+    unsafe {
+        cet_ss_test(1000)
+    };
 
     // Test
     unsafe {
