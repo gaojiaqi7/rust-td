@@ -18,11 +18,14 @@ pub struct RuntimeMemoryLayout {
 
     pub runtime_event_log_base: u64,
     pub runtime_hob_base: u64,
+    pub runtime_shadow_stack_base: u64,
     pub runtime_stack_base: u64,
     pub runtime_heap_base: u64,
     pub runtime_dma_base: u64,
 
     pub runtime_stack_top: u64,
+    pub runtime_shadow_stack_top: u64,
+
     pub runtime_memory_bottom: u64,
 }
 
@@ -36,6 +39,10 @@ impl RuntimeMemoryLayout {
 
         let current_base = current_base - TD_PAYLOAD_HOB_SIZE as u64;
         let runtime_hob_base = current_base;
+
+        let runtime_shadow_stack_top = current_base;
+        let current_base = current_base - TD_PAYLOAD_SHADOW_STACK_SIZE as u64;
+        let runtime_shadow_stack_base = current_base;
 
         let runtime_stack_top = current_base;
         let current_base = current_base - TD_PAYLOAD_STACK_SIZE as u64;
@@ -57,6 +64,8 @@ impl RuntimeMemoryLayout {
             runtime_payload_base,
             runtime_event_log_base,
             runtime_hob_base,
+            runtime_shadow_stack_base,
+            runtime_shadow_stack_top,
             runtime_stack_base,
             runtime_stack_top,
             runtime_heap_base,
