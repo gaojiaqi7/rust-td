@@ -6,6 +6,8 @@ use scroll::Pwrite;
 
 use crate::elf64::ProgramHeader;
 
+use core::ops::Range;
+
 const SIZE_4KB: u64 = 0x00001000u64;
 
 /// Number of bytes in an identifier.
@@ -83,6 +85,30 @@ pub fn relocate_elf_with_per_program_header(
         bottom as u64,
         (top - bottom) as u64,
     )
+}
+
+pub fn parse_init_array_section(image: &[u8]) -> Option<Range<usize>> {
+    // parser file and get the .init_array section, if any
+    let elf = crate::elf64::Elf::parse(image).unwrap();
+
+    for sh in elf.section_headers() {
+        if sh.sh_type == crate::elf64::SHT_INIT_ARRAY {
+            return Some(sh.vm_range());
+        }
+    }
+    None
+}
+
+pub fn parse_finit_array_section(image: &[u8]) -> Option<Range<usize>> {
+    // parser file and get the .finit_array section, if any
+    let elf = crate::elf64::Elf::parse(image).unwrap();
+
+    for sh in elf.section_headers() {
+        if sh.sh_type == crate::elf64::SHT_FINI_ARRAY {
+            return Some(sh.vm_range());
+        }
+    }
+    None
 }
 
 /// flag  ture align to low address else high address
