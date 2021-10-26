@@ -56,14 +56,17 @@
                 |     HEAP     |     (heap_size)
                 +--------------+ <-  stack_base - 0x7F000000 (8M)
                 |     STACK    |     (stack_size)
-                +--------------+ <-  hob_base - 0x7F800000 (7M)
+                +--------------+ <-  shadow_stack_base - 0x7F800000 (2M)
+                |      SS      |     (shadow_stack_size)
+                +--------------+ <-  hob_base - 0x7FA00000 (5M)
                 |    TD_HOB    |     (hob_size)
                 +--------------+ <-  event_log_base - 0x7FF00000 (1M)
                 | TD_EVENT_LOG |     (event_log_size)
                 +--------------+ <-  0x80000000 (2G) - for example
         */
         "event_log_size": 0x100000,
-        "hob_size": 0x700000,
+        "hob_size": 0x500000,
+        "shadow_stack_size": 0x200000,
         "stack_size": 0x800000,
         "heap_size": 0x01000000,
         "payload_base": 0x4000000,

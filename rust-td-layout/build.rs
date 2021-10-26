@@ -107,6 +107,8 @@ macro_rules! RUNTIME_TEMPLATE {
                     |     HEAP     |    ({heap_size:#010X})
                     +--------------+ <-  {stack_base:#010X}
                     |     STACK    |    ({stack_size:#010X})
+                    +--------------+ <-  {shadow_stack_base:#010X}
+                    |      SS      |    ({shadow_stack_size:#010X})
                     +--------------+ <-  {hob_base:#010X}
                     |    TD_HOB    |    ({hob_size:#010X})
                     +--------------+ <-  {event_log_base:#010X}
@@ -116,6 +118,7 @@ macro_rules! RUNTIME_TEMPLATE {
 
 pub const TD_PAYLOAD_EVENT_LOG_SIZE: u32 = {event_log_size:#X};
 pub const TD_PAYLOAD_HOB_SIZE: u32 = {hob_size:#X};
+pub const TD_PAYLOAD_SHADOW_STACK_SIZE: u32 = {shadow_stack_size:#X};
 pub const TD_PAYLOAD_STACK_SIZE: u32 = {stack_size:#X};
 pub const TD_PAYLOAD_HEAP_SIZE: usize = {heap_size:#X};
 pub const TD_PAYLOAD_DMA_SIZE: usize = {dma_size:#X};
@@ -151,6 +154,7 @@ struct TdImageLayoutConfig {
 struct TdRuntimeLayoutConfig {
     event_log_size: u32,
     hob_size: u32,
+    shadow_stack_size: u32,
     stack_size: u32,
     heap_size: u32,
     payload_base: u32,
@@ -234,6 +238,8 @@ impl TdLayout {
             heap_size = self.runtime.heap_size,
             stack_base = self.runtime.stack_base,
             stack_size = self.runtime.stack_size,
+            shadow_stack_base = self.runtime.shadow_stack_base,
+            shadow_stack_size = self.runtime.shadow_stack_size,
             hob_base = self.runtime.hob_base,
             hob_size = self.runtime.hob_size,
             event_log_base = self.runtime.event_log_base,
@@ -357,6 +363,8 @@ struct TdLayoutRuntime {
     heap_size: u32,
     stack_base: u32,
     stack_size: u32,
+    shadow_stack_base: u32,
+    shadow_stack_size: u32,
     hob_base: u32,
     hob_size: u32,
     event_log_base: u32,
@@ -367,7 +375,8 @@ impl TdLayoutRuntime {
     fn new_from_config(config: &TdLayoutConfig) -> Self {
         let event_log_base = 0x80000000 - config.runtime_layout.event_log_size; // TODO: 0x80000000 is hardcoded LOW_MEM_TOP, to remove
         let hob_base = event_log_base - config.runtime_layout.hob_size;
-        let stack_base = hob_base - config.runtime_layout.stack_size;
+        let shadow_stack_base = hob_base - config.runtime_layout.shadow_stack_size;
+        let stack_base = shadow_stack_base - config.runtime_layout.stack_size;
         let heap_base = stack_base - config.runtime_layout.heap_size;
         let dma_base = heap_base - config.runtime_layout.dma_size;
 
@@ -381,6 +390,8 @@ impl TdLayoutRuntime {
             heap_size: config.runtime_layout.heap_size,
             stack_base,
             stack_size: config.runtime_layout.stack_size,
+            shadow_stack_base,
+            shadow_stack_size: config.runtime_layout.shadow_stack_size,
             hob_base,
             hob_size: config.runtime_layout.hob_size,
             event_log_base,
