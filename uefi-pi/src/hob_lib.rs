@@ -113,6 +113,26 @@ pub fn get_total_memory_top(hob_list: &[u8]) -> u64 {
     mem_top
 }
 
+pub fn get_fv(hob_list: &[u8]) -> Option<FirmwareVolume> {
+    let mut offset = 0;
+
+    loop {
+        let header: Header = hob_list.pread(offset).unwrap();
+        match header.r#type {
+            HOB_TYPE_FV => {
+                let fv_hob: FirmwareVolume = hob_list.pread(offset).unwrap();
+                return Some(fv_hob);
+            }
+            HOB_TYPE_END_OF_HOB_LIST => {
+                break;
+            }
+            _ => {}
+        }
+        offset += header.length as usize;
+    }
+    None
+}
+
 pub fn get_hob_total_size(hob: &[u8]) -> Option<usize> {
     let phit: HandoffInfoTable = hob.pread(0).ok()?;
     Some(phit.efi_end_of_hob_list as usize - hob.as_ptr() as usize)
