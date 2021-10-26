@@ -9,6 +9,8 @@
 #![cfg_attr(not(test), no_main)]
 #![allow(unused_imports)]
 
+#[cfg(feature = "cet-ss")]
+mod cet_ss;
 mod heap;
 mod ipl;
 mod memory;
@@ -168,8 +170,11 @@ pub extern "win64" fn _start(
     let runtime_memorey_layout = RuntimeMemoryLayout::new(memory_top);
 
     let memory_bottom = runtime_memorey_layout.runtime_memory_bottom;
+
     let td_payload_hob_base = runtime_memorey_layout.runtime_hob_base;
     let td_payload_stack_base = runtime_memorey_layout.runtime_stack_base;
+    let td_payload_shadow_stack_base = runtime_memorey_layout.runtime_shadow_stack_base;
+    let td_payload_shadow_stack_top = runtime_memorey_layout.runtime_shadow_stack_top;
     let td_event_log_base = runtime_memorey_layout.runtime_event_log_base;
 
     heap::init();
@@ -389,6 +394,9 @@ pub extern "win64" fn _start(
     let _res = hob_slice.pwrite(hob_template, 0);
 
     stack_guard::stack_guard_enable(&mut mem);
+
+    #[cfg(feature = "cet-ss")]
+    cet_ss::enable_cet_ss(td_payload_shadow_stack_base, td_payload_shadow_stack_top);
 
     let stack_top = (td_payload_stack_base + TD_PAYLOAD_STACK_SIZE as u64) as usize;
     log::info!(
