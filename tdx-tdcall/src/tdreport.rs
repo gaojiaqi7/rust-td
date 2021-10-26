@@ -9,10 +9,10 @@ use spin::Mutex;
 
 use crate::tdx;
 
-const TDCALL_TDREPORT: u64 = 4;
-const TD_REPORT_SIZE: usize = 0x400;
-const TD_REPORT_ADDITIONAL_DATA_SIZE: usize = 64;
+pub const TD_REPORT_SIZE: usize = 0x400;
+pub const TD_REPORT_ADDITIONAL_DATA_SIZE: usize = 64;
 const TD_REPORT_BUFF_SIZE: usize = 0x840; // TD_REPORT_SIZE*2 + TD_REPORT_ADDITIONAL_DATA_SIZE
+const TDCALL_TDREPORT: u64 = 4;
 
 #[derive(Debug, Pread, Pwrite)]
 pub struct ReportType {
@@ -145,15 +145,17 @@ impl TdxReport {
             Some(report)
         }
     }
+
+    pub fn to_buff(&self) -> [u8; TD_REPORT_SIZE] {
+        let mut buff: [u8; TD_REPORT_SIZE] = [0; TD_REPORT_SIZE];
+        buff.pwrite(self, 0).unwrap();
+        buff
+    }
 }
 
 lazy_static! {
     static ref TD_REPORT: Mutex<[u8; TD_REPORT_BUFF_SIZE]> = Mutex::new([0; TD_REPORT_BUFF_SIZE]);
 }
-
-// extern "win64" {
-//     fn td_call(Leaf: u64, P1: u64, P2: u64, P3: u64, Results: u64) -> u64;
-// }
 
 pub fn tdcall_report(additional_data: &[u8]) -> TdxReport {
     let mut tdreport_buff = TD_REPORT.lock();
