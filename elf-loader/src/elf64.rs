@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 
-use core::fmt;
+use core::{fmt, ops::Range};
 
 use scroll::Pread;
 
@@ -65,6 +65,78 @@ pub const PT_HIPROC: u32 = 0x7fff_ffff;
 pub const PF_X: u32 = 1;
 /// Segment is writable
 pub const PF_W: u32 = 1 << 1;
+
+/// Section header table entry unused.
+pub const SHT_NULL: u32 = 0;
+/// Program data.
+pub const SHT_PROGBITS: u32 = 1;
+/// Symbol table.
+pub const SHT_SYMTAB: u32 = 2;
+/// String table.
+pub const SHT_STRTAB: u32 = 3;
+/// Relocation entries with addends.
+pub const SHT_RELA: u32 = 4;
+/// Symbol hash table.
+pub const SHT_HASH: u32 = 5;
+/// Dynamic linking information.
+pub const SHT_DYNAMIC: u32 = 6;
+/// Notes.
+pub const SHT_NOTE: u32 = 7;
+/// Program space with no data (bss).
+pub const SHT_NOBITS: u32 = 8;
+/// Relocation entries, no addends.
+pub const SHT_REL: u32 = 9;
+/// Reserved.
+pub const SHT_SHLIB: u32 = 10;
+/// Dynamic linker symbol table.
+pub const SHT_DYNSYM: u32 = 11;
+/// Array of constructors.
+pub const SHT_INIT_ARRAY: u32 = 14;
+/// Array of destructors.
+pub const SHT_FINI_ARRAY: u32 = 15;
+/// Array of pre-constructors.
+pub const SHT_PREINIT_ARRAY: u32 = 16;
+/// Section group.
+pub const SHT_GROUP: u32 = 17;
+/// Extended section indeces.
+pub const SHT_SYMTAB_SHNDX: u32 = 18;
+/// Number of defined types.
+pub const SHT_NUM: u32 = 19;
+/// Start OS-specific.
+pub const SHT_LOOS: u32 = 0x6000_0000;
+/// Object attributes.
+pub const SHT_GNU_ATTRIBUTES: u32 = 0x6fff_fff5;
+/// GNU-style hash table.
+pub const SHT_GNU_HASH: u32 = 0x6fff_fff6;
+/// Prelink library list.
+pub const SHT_GNU_LIBLIST: u32 = 0x6fff_fff7;
+/// Checksum for DSO content.
+pub const SHT_CHECKSUM: u32 = 0x6fff_fff8;
+/// Sun-specific low bound.
+pub const SHT_LOSUNW: u32 = 0x6fff_fffa;
+pub const SHT_SUNW_MOVE: u32 = 0x6fff_fffa;
+pub const SHT_SUNW_COMDAT: u32 = 0x6fff_fffb;
+pub const SHT_SUNW_SYMINFO: u32 = 0x6fff_fffc;
+/// Version definition section.
+pub const SHT_GNU_VERDEF: u32 = 0x6fff_fffd;
+/// Version needs section.
+pub const SHT_GNU_VERNEED: u32 = 0x6fff_fffe;
+/// Version symbol table.
+pub const SHT_GNU_VERSYM: u32 = 0x6fff_ffff;
+/// Sun-specific high bound.
+pub const SHT_HISUNW: u32 = 0x6fff_ffff;
+/// End OS-specific type.
+pub const SHT_HIOS: u32 = 0x6fff_ffff;
+/// Start of processor-specific.
+pub const SHT_LOPROC: u32 = 0x7000_0000;
+/// X86-64 unwind information.
+pub const SHT_X86_64_UNWIND: u32 = 0x7000_0001;
+/// End of processor-specific.
+pub const SHT_HIPROC: u32 = 0x7fff_ffff;
+/// Start of application-specific.
+pub const SHT_LOUSER: u32 = 0x8000_0000;
+/// End of application-specific.
+pub const SHT_HIUSER: u32 = 0x8fff_ffff;
 
 /// Marks end of dynamic section
 pub const DT_NULL: u64 = 0;
@@ -427,6 +499,71 @@ impl<'a> Iterator for ProgramHeaders<'a> {
     }
 }
 
+#[derive(Pread, Default, Debug)]
+pub struct SectionHeader {
+    /// Section name (string tbl index)
+    pub sh_name: u32,
+    /// Section type
+    pub sh_type: u32,
+    /// Section flags
+    pub sh_flags: u64,
+    /// Section virtual addr at execution
+    pub sh_addr: u64,
+    /// Section file offset
+    pub sh_offset: u64,
+    /// Section size in bytes
+    pub sh_size: u64,
+    /// Link to another section
+    pub sh_link: u32,
+    /// Additional section information
+    pub sh_info: u32,
+    /// Section alignment
+    pub sh_addralign: u64,
+    /// Entry size if section holds table
+    pub sh_entsize: u64,
+}
+
+impl SectionHeader {
+    pub fn vm_range(&self) -> Range<usize> {
+        self.sh_addr as usize..(self.sh_addr + self.sh_size) as usize
+    }
+}
+
+#[derive(Clone)]
+pub struct SectionHeaders<'a> {
+    entries: &'a [u8],
+    index: usize,
+    e_shnum: usize,
+}
+
+impl<'a> SectionHeaders<'a> {
+    // section entries byties, num_sections: total sections
+    fn parse(entries: &'a [u8], e_shnum: usize) -> Option<Self> {
+        Some(SectionHeaders {
+            index: 0,
+            entries,
+            e_shnum,
+        })
+    }
+}
+
+impl<'a> Iterator for SectionHeaders<'a> {
+    type Item = SectionHeader;
+    fn next(&mut self) -> Option<Self::Item> {
+        const ENTRY_SIZE: usize = 64;
+        if self.index == self.e_shnum {
+            return None;
+        }
+        let offset = self.index * ENTRY_SIZE;
+
+        let current_bytes = &self.entries[offset..];
+
+        let obj = current_bytes.pread::<SectionHeader>(0).unwrap();
+        self.index += 1;
+        Some(obj)
+    }
+}
+
 #[derive(Pread, Pwrite, Default)]
 pub struct Dyn {
     pub d_tag: u64,
@@ -617,6 +754,11 @@ impl<'a> Elf<'a> {
     pub fn program_headers(&self) -> ProgramHeaders<'a> {
         let bytes = &self.bytes[self.header.e_phoff as usize..];
         ProgramHeaders::parse(bytes, self.header.e_phnum as usize).unwrap()
+    }
+
+    pub fn section_headers(&self) -> SectionHeaders<'a> {
+        let bytes = &self.bytes[self.header.e_shoff as usize..];
+        SectionHeaders::parse(bytes, self.header.e_shnum as usize).unwrap()
     }
 
     pub fn relocations(&self) -> Option<Relocs<'a>> {
