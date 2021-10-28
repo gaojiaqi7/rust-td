@@ -1,7 +1,14 @@
 cargo-features = ["resolver"]
 [workspace]
 
-members = ["rust-tdshim", "rust-td-payload", "rust-quote-payload", "rust-td-tool", "benchmark"]
+members = [
+    "rust-tdshim",
+     "rust-td-payload", 
+     "rust-quote-payload", 
+     "rust-td-tool", 
+     "benchmark",
+     "fuzzing/fuzz_pe_loader",
+     ]
 
 default-members = ["rust-tdshim", "rust-td-payload"]
 resolver = "2"
