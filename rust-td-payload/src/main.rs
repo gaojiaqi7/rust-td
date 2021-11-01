@@ -12,19 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![no_std]
+#![no_main]
 #![allow(unused)]
 #![feature(global_asm)]
 #![feature(asm)]
 #![feature(alloc_error_handler)]
-#![cfg_attr(not(test), no_std)]
-#![cfg_attr(not(test), no_main)]
 #![cfg_attr(test, allow(unused_imports))]
+#![feature(custom_test_frameworks)]
+#![test_runner(test_runner)]
+#![reexport_test_harness_main = "test_main"]
+
+#[cfg(test)]
+use bootloader::{entry_point, BootInfo};
+
+#[cfg(test)]
+entry_point!(kernel_main);
 
 #[macro_use]
 extern crate alloc;
 
 mod asm;
 mod memslice;
+mod serial;
 
 #[cfg(feature = "benches")]
 use benchmark::{BenchmarkContext, ALLOCATOR};
@@ -64,7 +74,14 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-#[cfg(not(test))]
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    serial_println!("[failed]\n");
+    serial_println!("Error: {}\n", info);
+    exit_qemu(QemuExitCode::Failed);
+}
+
 #[alloc_error_handler]
 #[allow(clippy::empty_loop)]
 fn alloc_error(_info: core::alloc::Layout) -> ! {
@@ -72,15 +89,14 @@ fn alloc_error(_info: core::alloc::Layout) -> ! {
     panic!("deadloop");
 }
 
-#[cfg(not(test))]
 #[cfg(not(feature = "benches"))]
 #[global_allocator]
 pub static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-#[cfg(not(test))]
 pub fn init_heap(heap_start: usize, heap_size: usize) {
     #[cfg(feature = "benches")]
     unsafe {
+        log::info!("init_heap benches");
         ALLOCATOR.init(heap_start, heap_size);
     }
 
@@ -88,6 +104,75 @@ pub fn init_heap(heap_start: usize, heap_size: usize) {
     unsafe {
         ALLOCATOR.lock().init(heap_start, heap_size);
     }
+}
+
+#[cfg(test)]
+fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
+    use lazy_static::__Deref;
+
+    // turn the screen gray
+    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
+        for byte in framebuffer.buffer_mut() {
+            *byte = 0x90;
+        }
+    }
+
+    let memoryregions = boot_info.memory_regions.deref();
+    let offset = boot_info.physical_memory_offset.into_option().unwrap();
+
+    for usable in memoryregions.iter() {
+        if usable.kind == bootloader::boot_info::MemoryRegionKind::Usable {
+            init_heap((usable.start + offset) as usize, 0x100000);
+            break;
+        }
+    }
+
+    #[cfg(test)]
+    test_main();
+
+    loop {}
+}
+
+pub fn test_runner(tests: &[&dyn Testable]) {
+    serial_println!("Running {} tests", tests.len());
+    for test in tests {
+        test.run();
+    }
+    exit_qemu(QemuExitCode::Success);
+}
+
+pub trait Testable {
+    fn run(&self);
+}
+
+impl<T> Testable for T
+where
+    T: Fn(),
+{
+    fn run(&self) {
+        serial_print!("{}...\t", core::any::type_name::<T>());
+        self();
+        serial_println!("[ok]");
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum QemuExitCode {
+    Success = 0x10,
+    Failed = 0x11,
+}
+
+#[allow(clippy::empty_loop)]
+pub fn exit_qemu(exit_code: QemuExitCode) -> ! {
+    use x86_64::instructions::port::Port;
+
+    unsafe {
+        let mut port = Port::new(0xf4);
+        port.write(exit_code as u32);
+    }
+
+    loop {}
 }
 
 fn json_test() {
@@ -413,13 +498,6 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
     panic!("deadloop");
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn json_test() {
-        super::json_test();
-    }
-}
 fn test_stack() {
     let mut a = [0u8; 0x3000];
     for i in a.iter_mut() {
@@ -434,4 +512,18 @@ fn test_stack() {
     log::info!("test stack!!!!!!!!\n");
     log::info!("a: {:x}\n", a.as_ptr() as usize);
     log::info!("b: {:p}\n", &b);
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test_case]
+    fn trivial_assertion() {
+        assert_eq!(1, 1);
+    }
+
+    #[test_case]
+    fn test_json() {
+        super::json_test();
+    }
 }
