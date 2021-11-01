@@ -9,6 +9,7 @@ edition = "2018"
 
 [features]
 cet-ss = []
+benches = ["benchmark"]
 # add build process
 # build = "build.rs"
 
@@ -32,8 +33,15 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 chrono = { version = "0.4.19", default-features = false, features = ["serde"]}
 scroll = { version = "0.10", default-features = false, features = ["derive"]}
 x86 = "0.41.0"
-benchmark = { path = "../benchmark" }
+benchmark = { path = "../benchmark", optional = true }
+x86_64 = "0.14.6"
+bootloader = "0.10.9"
+uart_16550 = "0.2.14"
+
 
 [dependencies.lazy_static]
 version = "1.0"
 features = ["spin_no_std"]
+
+[package.metadata.bootloader]
+map-physical-memory = true

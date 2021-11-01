@@ -15,18 +15,10 @@ use linked_list_allocator::LockedHeap;
 use rust_td_layout::RuntimeMemoryLayout;
 use scroll::Pread;
 
-#[cfg(not(test))]
 #[global_allocator]
-static ALLOCATOR: MyHeap = MyHeap::empty();
+pub static ALLOCATOR: MyHeap = MyHeap::empty();
 
-#[cfg(not(test))]
-pub fn init_heap(heap_start: usize, heap_size: usize) {
-    unsafe {
-        ALLOCATOR.init(heap_start, heap_size);
-    }
-}
-
-struct MyHeap {
+pub struct MyHeap {
     max_heap: usize,
     used_heap: usize,
     inner: LockedHeap,

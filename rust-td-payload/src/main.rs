@@ -26,8 +26,10 @@ extern crate alloc;
 mod asm;
 mod memslice;
 
-#[cfg(not(test))]
-use benchmark::{init_heap, BenchmarkContext};
+#[cfg(feature = "benches")]
+use benchmark::{BenchmarkContext, ALLOCATOR};
+#[cfg(not(feature = "benches"))]
+use linked_list_allocator::LockedHeap;
 
 use core::alloc::Layout;
 use rust_td_layout::runtime::*;
@@ -68,6 +70,24 @@ fn panic(_info: &PanicInfo) -> ! {
 fn alloc_error(_info: core::alloc::Layout) -> ! {
     log::info!("alloc_error ... {:?}\n", _info);
     panic!("deadloop");
+}
+
+#[cfg(not(test))]
+#[cfg(not(feature = "benches"))]
+#[global_allocator]
+pub static ALLOCATOR: LockedHeap = LockedHeap::empty();
+
+#[cfg(not(test))]
+pub fn init_heap(heap_start: usize, heap_size: usize) {
+    #[cfg(feature = "benches")]
+    unsafe {
+        ALLOCATOR.init(heap_start, heap_size);
+    }
+
+    #[cfg(not(feature = "benches"))]
+    unsafe {
+        ALLOCATOR.lock().init(heap_start, heap_size);
+    }
 }
 
 fn json_test() {
@@ -354,13 +374,16 @@ pub extern "win64" fn _start(hob: *const c_void) -> ! {
         memory_layout.runtime_heap_base
     );
 
-    let mut bench = BenchmarkContext::new(memory_layout, "test");
+    #[cfg(feature = "benches")]
+    {
+        let mut bench = BenchmarkContext::new(memory_layout, "test");
 
-    bench.bench_start();
+        bench.bench_start();
 
-    test_stack();
+        test_stack();
 
-    bench.bench_end();
+        bench.bench_end();
+    }
 
     //Dump TD Report
     tdx_tdcall::tdreport::tdreport_dump();
@@ -411,5 +434,4 @@ fn test_stack() {
     log::info!("test stack!!!!!!!!\n");
     log::info!("a: {:x}\n", a.as_ptr() as usize);
     log::info!("b: {:p}\n", &b);
-    log::info!("a: {:x?}\n", &a[0x1000..0x1800]);
 }
