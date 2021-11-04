@@ -107,3 +107,7 @@ Stack guard is setup at `stack_guard_enable()` in [stack_guard.rs](https://githu
 [rudra](https://github.com/jyao1/rust-td/blob/master/doc/rudra.md) describes how to scan the vulnerable rust code by using [rudra](https://github.com/sslab-gatech/Rudra).
 
 [cargo-deny](https://github.com/jyao1/rust-td/blob/master/.github/workflows/deny.yml) is used to scan the vulnerable rust crate dependency accroding to [rustsec](https://rustsec.org/).
+
+[no_std_test](https://github.com/jyao1/rust-td/tree/master/no_std_test) is used to run test for no_std code.
+
+[test_lib](https://github.com/jyao1/rust-td/tree/master/test_lib) is to provide support function for unit test.
