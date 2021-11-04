@@ -34,7 +34,9 @@ extern crate alloc;
 
 mod asm;
 mod memslice;
-mod serial;
+
+#[cfg(test)]
+use test_lib::{init_heap, panic, serial_println, test_runner};
 
 #[cfg(feature = "benches")]
 use benchmark::{BenchmarkContext, ALLOCATOR};
@@ -74,14 +76,6 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-#[cfg(test)]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    serial_println!("[failed]\n");
-    serial_println!("Error: {}\n", info);
-    exit_qemu(QemuExitCode::Failed);
-}
-
 #[alloc_error_handler]
 #[allow(clippy::empty_loop)]
 fn alloc_error(_info: core::alloc::Layout) -> ! {
@@ -89,10 +83,12 @@ fn alloc_error(_info: core::alloc::Layout) -> ! {
     panic!("deadloop");
 }
 
+#[cfg(not(test))]
 #[cfg(not(feature = "benches"))]
 #[global_allocator]
 pub static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
+#[cfg(not(test))]
 pub fn init_heap(heap_start: usize, heap_size: usize) {
     #[cfg(feature = "benches")]
     unsafe {
@@ -129,48 +125,6 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 
     #[cfg(test)]
     test_main();
-
-    loop {}
-}
-
-pub fn test_runner(tests: &[&dyn Testable]) {
-    serial_println!("Running {} tests", tests.len());
-    for test in tests {
-        test.run();
-    }
-    exit_qemu(QemuExitCode::Success);
-}
-
-pub trait Testable {
-    fn run(&self);
-}
-
-impl<T> Testable for T
-where
-    T: Fn(),
-{
-    fn run(&self) {
-        serial_print!("{}...\t", core::any::type_name::<T>());
-        self();
-        serial_println!("[ok]");
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum QemuExitCode {
-    Success = 0x10,
-    Failed = 0x11,
-}
-
-#[allow(clippy::empty_loop)]
-pub fn exit_qemu(exit_code: QemuExitCode) -> ! {
-    use x86_64::instructions::port::Port;
-
-    unsafe {
-        let mut port = Port::new(0xf4);
-        port.write(exit_code as u32);
-    }
 
     loop {}
 }

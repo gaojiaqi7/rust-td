@@ -14,8 +14,8 @@ env:
   TOOLCHAIN_PROFILE: minimal
 
 jobs:
-  system_complie:
-    name: complie
+  system_compile:
+    name: Compile the find.bin file
     runs-on: ${{ matrix.host_os }}
     timeout-minutes: 30
 

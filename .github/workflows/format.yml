@@ -1,6 +1,6 @@
 on: [push, pull_request]
 
-name: Nightly lints
+name: Format and Clippy
 
 jobs:
   clippy:
