@@ -1,5 +1,5 @@
 [package]
-name = "boot"
+name = "no_std_test"
 version = "0.1.0"
 edition = "2018"
 
