@@ -2,11 +2,14 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 
-use core::convert::TryInto;
+use core::{convert::TryInto, mem::size_of};
 
 use tdx_tdcall::tdx;
 
 use ring::digest;
+use zerocopy::{AsBytes, FromBytes};
+
+use crate::acpi::{calculate_checksum, GenericSdtHeader};
 
 use scroll::{ctx, Endian, Pread, Pwrite};
 
@@ -115,7 +118,37 @@ pub struct TdEventLog {
     truncated: bool,
 }
 
+#[repr(C, packed)]
+#[derive(Default, AsBytes, FromBytes)]
+pub struct Tdel {
+    header: GenericSdtHeader,
+    reserved: u32,
+    laml: u64,
+    lasa: u64,
+}
+
+impl Tdel {
+    pub fn new(laml: u64, lasa: u64) -> Tdel {
+        let mut tdel = Tdel {
+            header: GenericSdtHeader::new(*b"TDEL", size_of::<Tdel>() as u32, 1),
+            laml,
+            lasa,
+            ..Default::default()
+        };
+        tdel.checksum();
+        tdel
+    }
+
+    pub fn checksum(&mut self) {
+        self.header.checksum(calculate_checksum(self.as_bytes()));
+    }
+}
+
 impl TdEventLog {
+    pub fn create_tdel(&self) -> Tdel {
+        Tdel::new(self.laml as u64, self.lasa as u64)
+    }
+
     pub fn init(td_event_mem: &'static mut [u8]) -> TdEventLog {
         TdEventLog {
             laml: td_event_mem.len(),

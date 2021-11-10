@@ -12,6 +12,7 @@ pub enum SliceType {
     Payload,
     PayloadHob,
     EventLog,
+    Acpi,
 }
 pub fn get_mem_slice<'a>(t: SliceType) -> &'a [u8] {
     unsafe {
@@ -62,6 +63,10 @@ pub fn get_dynamic_mem_slice_mut<'a>(t: SliceType, base_address: usize) -> &'a m
                 TD_PAYLOAD_HOB_SIZE as usize,
             ),
             SliceType::EventLog => core::slice::from_raw_parts_mut(
+                base_address as *const u8 as *mut u8,
+                TD_PAYLOAD_EVENT_LOG_SIZE as usize,
+            ),
+            SliceType::Acpi => core::slice::from_raw_parts_mut(
                 base_address as *const u8 as *mut u8,
                 TD_PAYLOAD_EVENT_LOG_SIZE as usize,
             ),

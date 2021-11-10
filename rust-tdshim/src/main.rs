@@ -9,6 +9,7 @@
 #![cfg_attr(not(test), no_main)]
 #![allow(unused_imports)]
 
+mod acpi;
 #[cfg(feature = "cet-ss")]
 mod cet_ss;
 mod heap;
@@ -32,9 +33,9 @@ use r_uefi_pi::pi::hob;
 use tdx_tdcall::tdx;
 use uefi_pi::pi::hob_lib;
 
-use rust_td_layout::build_time::*;
-use rust_td_layout::runtime::*;
 use rust_td_layout::RuntimeMemoryLayout;
+use rust_td_layout::{build_time, build_time::*};
+use rust_td_layout::{runtime, runtime::*};
 
 use core::panic::PanicInfo;
 
@@ -43,6 +44,7 @@ use core::ffi::c_void;
 use crate::memory::Memory;
 use crate::memslice::SliceType;
 use scroll::{Pread, Pwrite};
+use zerocopy::{AsBytes, FromBytes};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pwrite, Pread)]
@@ -176,6 +178,7 @@ pub extern "win64" fn _start(
     let td_payload_shadow_stack_base = runtime_memorey_layout.runtime_shadow_stack_base;
     let td_payload_shadow_stack_top = runtime_memorey_layout.runtime_shadow_stack_top;
     let td_event_log_base = runtime_memorey_layout.runtime_event_log_base;
+    let td_acpi_base = runtime_memorey_layout.runtime_acpi_base;
 
     heap::init();
     paging::init();
@@ -273,6 +276,23 @@ pub extern "win64" fn _start(
     let mut mem = Memory::new(&runtime_memorey_layout, memory_size);
 
     mem.setup_paging();
+
+    let acpi_slice = memslice::get_dynamic_mem_slice_mut(SliceType::Acpi, td_acpi_base as usize);
+
+    let mut acpi_tables = acpi::AcpiTables::new(acpi_slice);
+
+    //Create and install MADT and TDEL
+    let madt = mp::create_madt(
+        td_info.num_vcpus as u8,
+        build_time::TD_SHIM_MAILBOX_BASE as u64,
+    );
+    acpi_tables.install(&madt.data);
+    let tdel = td_event_log.create_tdel();
+    acpi_tables.install(tdel.as_bytes());
+
+    // When all the ACPI tables are put into the ACPI memory
+    // build the XSDT and RSDP
+    let rsdp = acpi_tables.finish();
 
     let page_table = hob::MemoryAllocation {
         header: hob::Header {
