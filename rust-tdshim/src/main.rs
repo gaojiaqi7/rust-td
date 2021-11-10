@@ -12,6 +12,7 @@
 mod acpi;
 #[cfg(feature = "cet-ss")]
 mod cet_ss;
+mod e820;
 mod heap;
 mod ipl;
 mod memory;
@@ -28,6 +29,7 @@ mod asm;
 
 use r_efi::efi;
 
+use r_uefi_pi::hob::*;
 use r_uefi_pi::pi;
 use r_uefi_pi::pi::hob;
 use tdx_tdcall::tdx;
@@ -41,6 +43,7 @@ use core::panic::PanicInfo;
 
 use core::ffi::c_void;
 
+use crate::e820::create_e820_entries;
 use crate::memory::Memory;
 use crate::memslice::SliceType;
 use scroll::{Pread, Pwrite};
@@ -165,11 +168,35 @@ pub extern "win64" fn _start(
     log::info!("num_vcpus - {:?}\n", td_info.num_vcpus);
 
     let memory_top = hob_lib::get_system_memory_size_below_4gb(hob_list);
-
-    // TBD: change hardcode value
-    mp::mp_accept_memory_resource_range(0x800000, memory_top - 0x800000);
-
     let runtime_memorey_layout = RuntimeMemoryLayout::new(memory_top);
+
+    let mut e820_table = e820::E820Table::new();
+
+    loop {
+        let mut offset: usize = 0;
+        let hob = &hob_list[offset..];
+        let header: Header = hob.pread(0).unwrap();
+        match header.r#type {
+            HOB_TYPE_RESOURCE_DESCRIPTOR => {
+                let resource_hob: ResourceDescription = hob.pread(0).unwrap();
+                match resource_hob.resource_type {
+                    RESOURCE_SYSTEM_MEMORY => {
+                        mp::mp_accept_memory_resource_range(
+                            resource_hob.physical_start,
+                            resource_hob.resource_length,
+                        );
+                    }
+                    RESOURCE_MEMORY_RESERVED => {}
+                    _ => {}
+                }
+            }
+            HOB_TYPE_END_OF_HOB_LIST => {
+                break;
+            }
+            _ => {}
+        }
+        offset += hob_lib::align_hob(header.length) as usize;
+    }
 
     let memory_bottom = runtime_memorey_layout.runtime_memory_bottom;
 
@@ -286,13 +313,15 @@ pub extern "win64" fn _start(
         td_info.num_vcpus as u8,
         build_time::TD_SHIM_MAILBOX_BASE as u64,
     );
-    acpi_tables.install(&madt.data);
     let tdel = td_event_log.create_tdel();
+    acpi_tables.install(&madt.data);
     acpi_tables.install(tdel.as_bytes());
 
     // When all the ACPI tables are put into the ACPI memory
     // build the XSDT and RSDP
     let rsdp = acpi_tables.finish();
+
+    let e820_table = create_e820_entries(&runtime_memorey_layout);
 
     let page_table = hob::MemoryAllocation {
         header: hob::Header {
