@@ -97,6 +97,8 @@ macro_rules! RUNTIME_TEMPLATE {
                     |   ........   |
                     +--------------+ <-  {pt_base:#010X}
                     |  Page Table  |
+                    +--------------+ <-  {payload_param_base:#010X}
+                    | PAYLOAD PARAM|    ({payload_param_size:#010X})
                     +--------------+ <-  {payload_base:#010X}
                     |    PAYLOAD   |    ({payload_size:#010X})
                     +--------------+
@@ -126,9 +128,11 @@ pub const TD_PAYLOAD_STACK_SIZE: u32 = {stack_size:#X};
 pub const TD_PAYLOAD_HEAP_SIZE: usize = {heap_size:#X};
 pub const TD_PAYLOAD_DMA_SIZE: usize = {dma_size:#X};
 
+pub const TD_PAYLOAD_PAGE_TABLE_BASE: u64 = {pt_base:#X};
+pub const TD_PAYLOAD_PARAM_BASE: u64 = {payload_param_base:#X};
+pub const TD_PAYLOAD_PARAM_SIZE: u64 = {payload_param_size:#X};
 pub const TD_PAYLOAD_BASE: u64 = {payload_base:#X};
 pub const TD_PAYLOAD_SIZE: usize = {payload_size:#X};
-pub const TD_PAYLOAD_PAGE_TABLE_BASE: u64 = {pt_base:#X};
 "
     };
 }
@@ -156,15 +160,16 @@ struct TdImageLayoutConfig {
 #[derive(Debug, PartialEq, Deserialize)]
 struct TdRuntimeLayoutConfig {
     event_log_size: u32,
+    acpi_size: u32,
     hob_size: u32,
     shadow_stack_size: u32,
     stack_size: u32,
     heap_size: u32,
-    payload_base: u32,
-    payload_size: u32,
-    page_table_base: u32,
     dma_size: u32,
-    acpi_size: u32,
+    payload_size: u32,
+    payload_param_base: u32,
+    payload_param_size: u32,
+    page_table_base: u32,
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -250,6 +255,8 @@ impl TdLayout {
             event_log_size = self.runtime.event_log_size,
             acpi_base = self.runtime.acpi_base,
             acpi_size = self.runtime.acpi_size,
+            payload_param_base = self.runtime.payload_param_base,
+            payload_param_size = self.runtime.payload_param_size,
         )
         .expect("Failed to generate configuration code from the template and JSON config");
 
@@ -363,6 +370,8 @@ struct TdLayoutRuntime {
     pt_base: u32,
     payload_base: u32,
     payload_size: u32,
+    payload_param_base: u32,
+    payload_param_size: u32,
     dma_base: u32,
     dma_size: u32,
     heap_base: u32,
@@ -388,10 +397,13 @@ impl TdLayoutRuntime {
         let stack_base = shadow_stack_base - config.runtime_layout.stack_size;
         let heap_base = stack_base - config.runtime_layout.heap_size;
         let dma_base = heap_base - config.runtime_layout.dma_size;
+        let payload_param_base = config.runtime_layout.payload_param_base;
+        let payload_base =
+            config.runtime_layout.payload_param_base + config.runtime_layout.payload_param_size;
 
         TdLayoutRuntime {
             pt_base: config.runtime_layout.page_table_base,
-            payload_base: config.runtime_layout.payload_base,
+            payload_base,
             payload_size: config.runtime_layout.payload_size,
             dma_base,
             dma_size: config.runtime_layout.dma_size,
@@ -407,6 +419,8 @@ impl TdLayoutRuntime {
             event_log_size: config.runtime_layout.event_log_size,
             acpi_base,
             acpi_size: config.runtime_layout.acpi_size,
+            payload_param_base,
+            payload_param_size: config.runtime_layout.payload_param_size,
         }
     }
 }

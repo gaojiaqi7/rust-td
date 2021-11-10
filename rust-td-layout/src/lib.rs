@@ -14,6 +14,7 @@ pub mod runtime;
 
 pub struct RuntimeMemoryLayout {
     pub runtime_page_table_base: u64,
+    pub runtime_payload_param_base: u64,
     pub runtime_payload_base: u64,
 
     pub runtime_event_log_base: u64,
@@ -61,10 +62,12 @@ impl RuntimeMemoryLayout {
         let runtime_memory_bottom = current_base;
 
         let runtime_page_table_base = TD_PAYLOAD_PAGE_TABLE_BASE as u64;
+        let runtime_payload_param_base = TD_PAYLOAD_PARAM_BASE as u64;
         let runtime_payload_base = TD_PAYLOAD_BASE as u64;
 
         RuntimeMemoryLayout {
             runtime_page_table_base,
+            runtime_payload_param_base,
             runtime_payload_base,
             runtime_event_log_base,
             runtime_hob_base,
