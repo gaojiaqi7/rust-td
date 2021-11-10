@@ -12,10 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use core::mem::size_of;
 use r_uefi_pi::hob::*;
 use scroll::Pread;
 
 const SIZE_4G: u64 = 0x100000000u64;
+
+pub fn align_hob(v: u16) -> u16 {
+    (v + 7) / 8 * 8
+}
 
 pub fn dump_hob(hob_list: &[u8]) {
     let mut offset = 0;
@@ -51,7 +56,7 @@ pub fn dump_hob(hob_list: &[u8]) {
                 header.dump();
             }
         }
-        offset += header.length as usize;
+        offset += align_hob(header.length) as usize;
     }
 }
 
@@ -77,7 +82,7 @@ pub fn get_system_memory_size_below_4gb(hob_list: &[u8]) -> u64 {
             }
             _ => {}
         }
-        offset += header.length as usize;
+        offset += align_hob(header.length) as usize;
     }
 
     low_mem_top
@@ -108,7 +113,7 @@ pub fn get_total_memory_top(hob_list: &[u8]) -> u64 {
             }
             _ => {}
         }
-        offset += header.length as usize;
+        offset += align_hob(header.length) as usize;
     }
     mem_top
 }
@@ -128,7 +133,7 @@ pub fn get_fv(hob_list: &[u8]) -> Option<FirmwareVolume> {
             }
             _ => {}
         }
-        offset += header.length as usize;
+        offset += align_hob(header.length) as usize;
     }
     None
 }
@@ -136,4 +141,42 @@ pub fn get_fv(hob_list: &[u8]) -> Option<FirmwareVolume> {
 pub fn get_hob_total_size(hob: &[u8]) -> Option<usize> {
     let phit: HandoffInfoTable = hob.pread(0).ok()?;
     Some(phit.efi_end_of_hob_list as usize - hob.as_ptr() as usize)
+}
+
+pub fn get_next_extension_guid_hob<'a>(hob_list: &'a [u8], guid: &[u8]) -> Option<&'a [u8]> {
+    let mut offset = 0;
+
+    loop {
+        let header: Header = hob_list.pread(offset).unwrap();
+        match header.r#type {
+            HOB_TYPE_GUID_EXTENSION => {
+                let guid_hob: GuidExtention = hob_list.pread(offset).unwrap();
+                if guid_hob.name == guid[0..16] {
+                    return Some(&hob_list[offset..]);
+                }
+            }
+            HOB_TYPE_END_OF_HOB_LIST => {
+                break;
+            }
+            _ => {}
+        }
+
+        offset += align_hob(header.length) as usize;
+    }
+    None
+}
+
+pub fn get_guid_data(hob_list: &'_ [u8]) -> &'_ [u8] {
+    let mut offset = 0;
+
+    let guid_hob: GuidExtention = hob_list.pread(offset).unwrap();
+    offset += size_of::<GuidExtention>();
+
+    let guid_data_len = guid_hob.header.length as usize - size_of::<GuidExtention>();
+    &hob_list[offset..offset + guid_data_len]
+}
+
+pub fn get_nex_hob(hob_list: &'_ [u8]) -> &'_ [u8] {
+    let header: Header = hob_list.pread(0).unwrap();
+    &hob_list[align_hob(header.length) as usize..]
 }
