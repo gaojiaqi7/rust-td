@@ -18,6 +18,11 @@ use rust_td_layout::build_time::*;
 use rust_td_layout::mailbox::*;
 use rust_td_layout::metadata::*;
 
+#[cfg(feature = "boot-kernel")]
+use rust_td_layout::runtime::{
+    TD_PAYLOAD_BASE, TD_PAYLOAD_PARAM_BASE, TD_PAYLOAD_PARAM_SIZE, TD_PAYLOAD_SIZE,
+};
+
 use scroll::{Pread, Pwrite};
 
 const RELOCATE_PAYLOAD: u8 = 0;
@@ -342,6 +347,11 @@ fn build_tdx_metadata(metadata: &mut [u8]) {
     tdx_metadata.descriptor.length = 0xd0;
     tdx_metadata.descriptor.version = 1;
     tdx_metadata.descriptor.number_of_section_entry = 6;
+    #[cfg(feature = "boot-kernel")]
+    {
+        tdx_metadata.descriptor.length += 64;
+        tdx_metadata.descriptor.number_of_section_entry += 2;
+    }
 
     // BFV
     tdx_metadata.sections[0].data_offset = TD_SHIM_PAYLOAD_OFFSET;
@@ -387,6 +397,25 @@ fn build_tdx_metadata(metadata: &mut [u8]) {
     tdx_metadata.sections[5].memory_data_size = TD_SHIM_MAILBOX_SIZE as u64;
     tdx_metadata.sections[5].r#type = TDX_METADATA_SECTION_TYPE_TEMP_MEM;
     tdx_metadata.sections[5].attributes = 0;
+
+    #[cfg(feature = "boot-kernel")]
+    {
+        // kernel image
+        tdx_metadata.payload_sections[0].data_offset = 0;
+        tdx_metadata.payload_sections[0].raw_data_size = 0;
+        tdx_metadata.payload_sections[0].memory_address = TD_PAYLOAD_BASE as u64;
+        tdx_metadata.payload_sections[0].memory_data_size = TD_PAYLOAD_SIZE as u64;
+        tdx_metadata.payload_sections[0].r#type = TDX_METADATA_SECTION_TYPE_PAYLOAD;
+        tdx_metadata.payload_sections[0].attributes = 0;
+
+        //parameters
+        tdx_metadata.payload_sections[1].data_offset = 0;
+        tdx_metadata.payload_sections[1].raw_data_size = 0;
+        tdx_metadata.payload_sections[1].memory_address = TD_PAYLOAD_PARAM_BASE as u64;
+        tdx_metadata.payload_sections[1].memory_data_size = TD_PAYLOAD_PARAM_SIZE as u64;
+        tdx_metadata.payload_sections[1].r#type = TDX_METADATA_SECTION_TYPE_PAYLOAD_PARAM;
+        tdx_metadata.payload_sections[1].attributes = 0;
+    }
 
     let _res = metadata.pwrite(tdx_metadata, 0).unwrap();
 }

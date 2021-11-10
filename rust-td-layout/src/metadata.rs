@@ -15,6 +15,8 @@ pub const TDX_METADATA_SECTION_TYPE_BFV: u32 = 0;
 pub const TDX_METADATA_SECTION_TYPE_CFV: u32 = 1;
 pub const TDX_METADATA_SECTION_TYPE_TD_HOB: u32 = 2;
 pub const TDX_METADATA_SECTION_TYPE_TEMP_MEM: u32 = 3;
+pub const TDX_METADATA_SECTION_TYPE_PAYLOAD: u32 = 5;
+pub const TDX_METADATA_SECTION_TYPE_PAYLOAD_PARAM: u32 = 6;
 
 pub const TDX_METADATA_ATTRIBUTES_EXTENDMR: u32 = 0x00000001;
 
@@ -49,6 +51,8 @@ pub struct TdxMetadata {
     pub guid: TdxMetadataGuid,
     pub descriptor: TdxMetadataDescriptor,
     pub sections: [TdxMetadataSection; 6],
+    #[cfg(feature = "boot-kernel")]
+    pub payload_sections: [TdxMetadataSection; 2],
 }
 
 #[derive(Default, Pwrite, Pread)]
