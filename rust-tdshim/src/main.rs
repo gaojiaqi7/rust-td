@@ -15,12 +15,12 @@ mod cet_ss;
 mod e820;
 mod heap;
 mod ipl;
+mod linux;
 mod memory;
 mod memslice;
 mod mp;
 mod stack_guard;
 mod tcg;
-mod linux;
 
 extern "win64" {
     fn switch_stack_call(entry_point: usize, stack_top: usize, P1: usize, P2: usize);
@@ -143,17 +143,13 @@ pub struct PayloadInfo {
     pub entry_point: u64,
 }
 
-const HOB_ACPI_TABLE_GUID: [u8; 16] =
-    [0x70, 0x58, 0x0c, 0x6a,
-    0xed, 0xd4, 0xf4, 0x44,
-    0xa1, 0x35, 0xdd, 0x23,
-    0x8b, 0x6f, 0xc, 0x8d];
+const HOB_ACPI_TABLE_GUID: [u8; 16] = [
+    0x70, 0x58, 0x0c, 0x6a, 0xed, 0xd4, 0xf4, 0x44, 0xa1, 0x35, 0xdd, 0x23, 0x8b, 0x6f, 0xc, 0x8d,
+];
 
-const HOB_KERNEL_INFO_GUID: [u8; 16] =
-    [0x12, 0xa4, 0x6f, 0xb9,
-    0x1f, 0x46, 0xe3, 0x4b,
-    0x8c, 0xd, 0xad, 0x80,
-    0x5a, 0x49, 0x7a, 0xc0];
+const HOB_KERNEL_INFO_GUID: [u8; 16] = [
+    0x12, 0xa4, 0x6f, 0xb9, 0x1f, 0x46, 0xe3, 0x4b, 0x8c, 0xd, 0xad, 0x80, 0x5a, 0x49, 0x7a, 0xc0,
+];
 
 #[cfg(not(test))]
 #[no_mangle]
@@ -207,8 +203,8 @@ pub extern "win64" fn _start(
                             resource_hob.resource_length,
                         );
                     }
-                    RESOURCE_MEMORY_RESERVED => {},
-                    _ => {},
+                    RESOURCE_MEMORY_RESERVED => {}
+                    _ => {}
                 }
             }
             HOB_TYPE_END_OF_HOB_LIST => {
@@ -325,29 +321,22 @@ pub extern "win64" fn _start(
 
     mem.setup_paging();
 
-    if let Some(hob) = hob_lib::get_next_extension_guid_hob(
-        hob_list,
-        &HOB_KERNEL_INFO_GUID
-    ) {
+    if let Some(hob) = hob_lib::get_next_extension_guid_hob(hob_list, &HOB_KERNEL_INFO_GUID) {
         let kernel_info = hob_lib::get_guid_data(hob);
-        let vmm_kernel = kernel_info
-            .pread::<PayloadInfo>(0)
-            .unwrap();
+        let vmm_kernel = kernel_info.pread::<PayloadInfo>(0).unwrap();
 
         match vmm_kernel.image_type {
-            0 => {},
+            0 => {}
             1 => {
-                let acpi_slice = memslice::get_dynamic_mem_slice_mut(
-                    SliceType::Acpi,
-                    td_acpi_base as usize
-                );
+                let acpi_slice =
+                    memslice::get_dynamic_mem_slice_mut(SliceType::Acpi, td_acpi_base as usize);
 
                 let mut acpi_tables = acpi::AcpiTables::new(acpi_slice);
 
                 //Create and install MADT and TDEL
                 let madt = mp::create_madt(
                     td_info.num_vcpus as u8,
-                    build_time::TD_SHIM_MAILBOX_BASE as u64
+                    build_time::TD_SHIM_MAILBOX_BASE as u64,
                 );
                 let tdel = td_event_log.create_tdel();
                 acpi_tables.install(&madt.data);
@@ -364,12 +353,18 @@ pub extern "win64" fn _start(
                 // When all the ACPI tables are put into the ACPI memory
                 // build the XSDT and RSDP
                 let rsdp = acpi_tables.finish();
-
                 let e820_table = create_e820_entries(&runtime_memorey_layout);
 
+                linux::boot::boot_kernel(
+                    memslice::get_mem_slice_mut(memslice::SliceType::Payload),
+                    rsdp,
+                    e820_table.as_slice(),
+                );
                 panic!("deadloop");
-            },
-            _ => {panic!("deadloop");}
+            }
+            _ => {
+                panic!("deadloop");
+            }
         }
     }
 
