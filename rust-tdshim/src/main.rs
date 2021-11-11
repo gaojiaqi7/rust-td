@@ -20,6 +20,7 @@ mod memslice;
 mod mp;
 mod stack_guard;
 mod tcg;
+mod linux;
 
 extern "win64" {
     fn switch_stack_call(entry_point: usize, stack_top: usize, P1: usize, P2: usize);
@@ -136,6 +137,24 @@ fn log_hob_list(hob_list: &[u8], td_event_log: &mut tcg::TdEventLog) {
     );
 }
 
+#[derive(Default, Clone, Copy, Pread, Pwrite)]
+pub struct PayloadInfo {
+    pub image_type: u32,
+    pub entry_point: u64,
+}
+
+const HOB_ACPI_TABLE_GUID: [u8; 16] =
+    [0x70, 0x58, 0x0c, 0x6a,
+    0xed, 0xd4, 0xf4, 0x44,
+    0xa1, 0x35, 0xdd, 0x23,
+    0x8b, 0x6f, 0xc, 0x8d];
+
+const HOB_KERNEL_INFO_GUID: [u8; 16] =
+    [0x12, 0xa4, 0x6f, 0xb9,
+    0x1f, 0x46, 0xe3, 0x4b,
+    0x8c, 0xd, 0xad, 0x80,
+    0x5a, 0x49, 0x7a, 0xc0];
+
 #[cfg(not(test))]
 #[no_mangle]
 #[export_name = "efi_main"]
@@ -172,8 +191,10 @@ pub extern "win64" fn _start(
 
     let mut e820_table = e820::E820Table::new();
 
+    // Read the system memory information from TD HOB, accept system memory and
+    // add them into the e820 table together with memory reserved by VMM.
+    let mut offset: usize = 0;
     loop {
-        let mut offset: usize = 0;
         let hob = &hob_list[offset..];
         let header: Header = hob.pread(0).unwrap();
         match header.r#type {
@@ -186,8 +207,8 @@ pub extern "win64" fn _start(
                             resource_hob.resource_length,
                         );
                     }
-                    RESOURCE_MEMORY_RESERVED => {}
-                    _ => {}
+                    RESOURCE_MEMORY_RESERVED => {},
+                    _ => {},
                 }
             }
             HOB_TYPE_END_OF_HOB_LIST => {
@@ -304,24 +325,53 @@ pub extern "win64" fn _start(
 
     mem.setup_paging();
 
-    let acpi_slice = memslice::get_dynamic_mem_slice_mut(SliceType::Acpi, td_acpi_base as usize);
+    if let Some(hob) = hob_lib::get_next_extension_guid_hob(
+        hob_list,
+        &HOB_KERNEL_INFO_GUID
+    ) {
+        let kernel_info = hob_lib::get_guid_data(hob);
+        let vmm_kernel = kernel_info
+            .pread::<PayloadInfo>(0)
+            .unwrap();
 
-    let mut acpi_tables = acpi::AcpiTables::new(acpi_slice);
+        match vmm_kernel.image_type {
+            0 => {},
+            1 => {
+                let acpi_slice = memslice::get_dynamic_mem_slice_mut(
+                    SliceType::Acpi,
+                    td_acpi_base as usize
+                );
 
-    //Create and install MADT and TDEL
-    let madt = mp::create_madt(
-        td_info.num_vcpus as u8,
-        build_time::TD_SHIM_MAILBOX_BASE as u64,
-    );
-    let tdel = td_event_log.create_tdel();
-    acpi_tables.install(&madt.data);
-    acpi_tables.install(tdel.as_bytes());
+                let mut acpi_tables = acpi::AcpiTables::new(acpi_slice);
 
-    // When all the ACPI tables are put into the ACPI memory
-    // build the XSDT and RSDP
-    let rsdp = acpi_tables.finish();
+                //Create and install MADT and TDEL
+                let madt = mp::create_madt(
+                    td_info.num_vcpus as u8,
+                    build_time::TD_SHIM_MAILBOX_BASE as u64
+                );
+                let tdel = td_event_log.create_tdel();
+                acpi_tables.install(&madt.data);
+                acpi_tables.install(tdel.as_bytes());
 
-    let e820_table = create_e820_entries(&runtime_memorey_layout);
+                let mut next_hob = hob_list;
+                while let Some(hob) =
+                    hob_lib::get_next_extension_guid_hob(next_hob, &HOB_ACPI_TABLE_GUID)
+                {
+                    acpi_tables.install(hob_lib::get_guid_data(hob));
+                    next_hob = hob_lib::get_nex_hob(hob);
+                }
+
+                // When all the ACPI tables are put into the ACPI memory
+                // build the XSDT and RSDP
+                let rsdp = acpi_tables.finish();
+
+                let e820_table = create_e820_entries(&runtime_memorey_layout);
+
+                panic!("deadloop");
+            },
+            _ => {panic!("deadloop");}
+        }
+    }
 
     let page_table = hob::MemoryAllocation {
         header: hob::Header {
