@@ -53,6 +53,10 @@ set CC=clang
 set AR=llvm-ar
 ```
 
+## To boot kernel:
+
+See [kernel-direct-boot.md](kernel-direct-boot.md)
+
 ### Build TdShim
 ```
 cargo xbuild -p rust-tdshim --target x86_64-unknown-uefi --release
