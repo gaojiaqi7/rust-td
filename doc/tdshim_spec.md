@@ -14,6 +14,24 @@ Simplified kernels typically have no UEFI dependencies and no ACPI ASL support. 
 
 TD Shim is a simplified TDX virtual firmware for the simplified kernel for TD container. This document describes a lightweight interface between the TD Shim and TD VMM and between the TD Shim and the simplified kernel.
 
+### Acknowledgments
+
+TD-SHIM specification is contributed by following individuals:
+
+**Contributors:**
+
+* Jiaqi Gao &mdash; Intel Corporation
+* Andi Kleen &mdash; Intel Corporation
+* Jiang Liu &mdash; Alibaba Group
+* Xiaoyu Lu &mdash; Intel Corporation
+* Jun Nakajima &mdash; Intel Corporation
+* Samuel Ortiz &mdash; Apple Inc.
+* Yue Qian &mdash; Alibaba Group
+* Qifan Wu &mdash; Alibaba Group
+* Jiewen Yao &mdash; Intel Corporation
+
+## Part 0 - Overview
+
 ### Design Philosophy
 
 TD Shim is a lightweight layer between hypervisor and guest TD kernel.
