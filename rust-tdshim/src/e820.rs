@@ -1,5 +1,4 @@
-use rust_td_layout::runtime::*;
-use rust_td_layout::RuntimeMemoryLayout;
+use rust_td_layout::{build_time, runtime, RuntimeMemoryLayout};
 
 const MAX_E820_ENTRY: usize = 128;
 
@@ -73,12 +72,17 @@ pub fn create_e820_entries(runtime_memory: &RuntimeMemoryLayout) -> E820Table {
     table.add_range(
         E820Type::Acpi,
         runtime_memory.runtime_acpi_base,
-        TD_PAYLOAD_ACPI_SIZE as u64,
+        runtime::TD_PAYLOAD_ACPI_SIZE as u64,
     );
     table.add_range(
-        E820Type::Reserved,
+        E820Type::Nvs,
         runtime_memory.runtime_event_log_base,
-        TD_PAYLOAD_EVENT_LOG_SIZE as u64,
+        runtime::TD_PAYLOAD_EVENT_LOG_SIZE as u64,
+    );
+    table.add_range(
+        E820Type::Nvs,
+        build_time::TD_SHIM_MAILBOX_BASE as u64,
+        build_time::TD_SHIM_MAILBOX_SIZE as u64,
     );
     table
 }
