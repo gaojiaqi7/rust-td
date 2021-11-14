@@ -245,6 +245,8 @@ ParkAp:
     inc       eax
 
 .check_arrival_cnt:
+    ; BSP won't get here, so the total count should be cpu number minus 1
+    sub       r8d, 1
     cmp       eax, r8d
     je        .check_command
     mov       eax, dword[rsp + CpuArrivalOffset]
@@ -255,6 +257,13 @@ ParkAp:
     cmp     eax, MpProtectedModeWakeupCommandNoop
     je      .check_command
 
+    ; Determine if this is a broadcast or directly for my apic-id, if not, ignore
+    cmp     dword[rsp + ApicidOffset], MailboxApicidBroadcast
+    je      .mailbox_process_command
+    cmp     dword[rsp + ApicidOffset], r9d
+    jne     .check_command
+
+.mailbox_process_command:
     cmp     eax, MpProtectedModeWakeupCommandWakeup
     je      .do_wakeup
 
