@@ -78,6 +78,9 @@ pub const TD_SHIM_TEMP_HEAP_BASE: u32 = {temp_heap_base:#X}; // TD_SHIM_FIRMWARE
 pub const TD_SHIM_PAYLOAD_BASE: u32 = {payload_base:#X}; // TD_SHIM_FIRMWARE_BASE + TD_SHIM_PAYLOAD_OFFSET
 pub const TD_SHIM_IPL_BASE: u32 = {ipl_base:#X}; // TD_SHIM_FIRMWARE_BASE + TD_SHIM_IPL_OFFSET
 pub const TD_SHIM_RESET_VECTOR_BASE: u32 = {rst_vec_base:#X}; // TD_SHIM_FIRMWARE_BASE + TD_SHIM_RESET_VECTOR_OFFSET
+pub const TD_SHIM_RESET_SEC_CORE_ENTRY_POINT_ADDR: u32 = {sec_entry_point:#X}; // 0xFFFFFFFF - 0x20 - 12 + 1
+pub const TD_SHIM_RESET_SEC_CORE_BASE_ADDR: u32 = {sec_core_base:#X}; // 0xFFFFFFFF - 0x20 - 8 + 1
+pub const TD_SHIM_RESET_SEC_CORE_SIZE_ADDR: u32 = {sec_core_size:#X}; // 0xFFFFFFFF - 0x20 - 4 + 1
 "
 };
 }
@@ -226,6 +229,9 @@ impl TdLayout {
             payload_base = self.img_loaded.payload_base,
             ipl_base = self.img_loaded.ipl_base,
             rst_vec_base = self.img_loaded.rst_vec_base,
+            sec_entry_point = self.img_loaded.sec_entry_point,
+            sec_core_base = self.img_loaded.sec_core_base,
+            sec_core_size = self.img_loaded.sec_core_size,
         )
         .expect("Failed to generate configuration code from the template and JSON config");
 
@@ -299,6 +305,7 @@ impl TdLayoutImage {
         let ipl_offset = payload_offset + config.image_layout.payload_size;
         let metadata_offset =
             ipl_offset - size_of::<TdxMetadata>() as u32 + size_of::<TdxMetadataGuid>() as u32;
+
         let rst_vec_offset = ipl_offset + config.image_layout.ipl_size;
         let firmware_size = rst_vec_offset + config.image_layout.reset_vector_size;
 
@@ -337,6 +344,9 @@ struct TdLayoutImageLoaded {
     payload_base: u32,
     ipl_base: u32,
     rst_vec_base: u32,
+    sec_entry_point: u32,
+    sec_core_base: u32,
+    sec_core_size: u32,
 }
 
 impl TdLayoutImageLoaded {
@@ -350,6 +360,9 @@ impl TdLayoutImageLoaded {
         let payload_base = firmware_base + img.payload_offset;
         let ipl_base = firmware_base + img.ipl_offset;
         let rst_vec_base = firmware_base + img.rst_vec_offset;
+        let sec_entry_point = 0xFFFFFFFF - 0x20 - 12 + 1;
+        let sec_core_base = 0xFFFFFFFF - 0x20 - 8 + 1;
+        let sec_core_size = 0xFFFFFFFF - 0x20 - 4 + 1;
 
         TdLayoutImageLoaded {
             firmware_base,
@@ -361,6 +374,9 @@ impl TdLayoutImageLoaded {
             payload_base,
             ipl_base,
             rst_vec_base,
+            sec_entry_point,
+            sec_core_base,
+            sec_core_size,
         }
     }
 }

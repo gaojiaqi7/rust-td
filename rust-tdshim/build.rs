@@ -92,6 +92,19 @@ fn main() {
     let td_shim_tmp_heap_size_arg =
         format!("-DTEMP_RAM_SIZE=0x{:X}", build_time::TD_SHIM_TEMP_HEAP_SIZE);
 
+    let loaded_sec_entrypoint_base = format!(
+        "-DTD_SHIM_RESET_SEC_CORE_ENTRY_POINT_ADDR=0x{:X}",
+        build_time::TD_SHIM_RESET_SEC_CORE_ENTRY_POINT_ADDR
+    );
+    let loaded_sec_core_base = format!(
+        "-DTD_SHIM_RESET_SEC_CORE_BASE_ADDR=0x{:X}",
+        build_time::TD_SHIM_RESET_SEC_CORE_BASE_ADDR
+    );
+    let loaded_sec_core_size = format!(
+        "-DTD_SHIM_RESET_SEC_CORE_SIZE_ADDR=0x{:X}",
+        build_time::TD_SHIM_RESET_SEC_CORE_SIZE_ADDR
+    );
+
     let _ = env::set_current_dir(new_current_dir.as_path());
     run_command(nasm(
         Path::new("ResetVector.nasm"),
@@ -108,6 +121,9 @@ fn main() {
             &td_shim_tmp_stack_size_arg,
             &td_shim_tmp_heap_base_arg,
             &td_shim_tmp_heap_size_arg,
+            &loaded_sec_entrypoint_base,
+            &loaded_sec_core_base,
+            &loaded_sec_core_size,
         ],
     ));
 

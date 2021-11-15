@@ -511,16 +511,19 @@ fn main() -> std::io::Result<()> {
         // relocate ipl to 1M
         0x100000 as usize,
     );
-    match reloc {
-        Some(entry_point) => println!(
-            "reloc IPL entrypoint - 0x{:x} - base: 0x{:x}",
-            entry_point,
-            // TD_SHIM_IPL_BASE as usize + rust_ipl_header.len()
-            // relocate ipl to 1M
-            0x100000 as usize
-        ),
-        None => println!("reloc IPL fail"),
-    }
+    let entry_point = match reloc {
+        Some(entry_point) => {
+            println!(
+                "reloc IPL entrypoint - 0x{:x} - base: 0x{:x}",
+                entry_point,
+                // TD_SHIM_IPL_BASE as usize + rust_ipl_header.len()
+                // relocate ipl to 1M
+                0x100000 as usize
+            );
+            (entry_point - 0x100000) as u32
+        }
+        None => panic!("reloc IPL fail"),
+    };
 
     rust_firmware_file
         .write_all(&aug_buf[..TD_SHIM_MAILBOX_OFFSET as usize])
@@ -562,6 +565,26 @@ fn main() -> std::io::Result<()> {
     rust_firmware_file
         .write_all(&rust_ipl_header[..])
         .expect("fail to write rust IPL header");
+
+    let current_data = rust_firmware_file.metadata().unwrap().len();
+
+    #[derive(Debug, Pread, Pwrite)]
+    struct ResetVectorParams {
+        entry_point: u32, // rust entry point
+        img_base: u32,    // rust ipl bin base
+        img_size: u32,    // rust ipl bin size
+    }
+
+    let reset_vector_info = ResetVectorParams {
+        entry_point,
+        img_base: TD_SHIM_FIRMWARE_BASE + current_data as u32,
+        img_size: rust_ipl_bin.len() as u32,
+    };
+    let reset_vector_info_buffer = &mut [0u8; size_of::<ResetVectorParams>()];
+    let _ = reset_vector_info_buffer
+        .pwrite(reset_vector_info, 0)
+        .unwrap();
+
     rust_firmware_file
         .write_all(&new_rust_ipl_buf[..])
         .expect("fail to write rust IPL");
@@ -571,8 +594,15 @@ fn main() -> std::io::Result<()> {
         .expect("fail to write reset vector header");
 
     rust_firmware_file
-        .write_all(&reset_vector_bin[..(reset_vector_bin.len() - 0x20)])
+        .write_all(
+            &reset_vector_bin[..(reset_vector_bin.len() - 0x20 - size_of::<ResetVectorParams>())],
+        )
         .expect("fail to write reset vector");
+
+    rust_firmware_file
+        .write_all(&reset_vector_info_buffer[..])
+        .expect("fail to write reset vector");
+
     rust_firmware_file
         .write_all(&metadata_ptr[..])
         .expect("fail to write reset vector");
