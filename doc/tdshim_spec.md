@@ -23,7 +23,7 @@ TD-SHIM specification is contributed by following individuals:
 * Jiaqi Gao &mdash; Intel Corporation
 * Andi Kleen &mdash; Intel Corporation
 * Jiang Liu &mdash; Alibaba Group
-* Xiaoyu Lu &mdash; Intel Corporation
+* Xiaoyu Lu &mdash; (XiaoyuX.Lu@intel.com)
 * Jun Nakajima &mdash; Intel Corporation
 * Samuel Ortiz &mdash; Apple Inc.
 * Yue Qian &mdash; Alibaba Group
