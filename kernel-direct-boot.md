@@ -25,5 +25,5 @@ cargo run -p rust-td-tool --features "boot-kernel" -- target/x86_64-unknown-uefi
 BIOS=final.bin
 GUEST_IMG=./td-guest-centos8.4.qcow2
 KERNEL=./bzImage
-./cloud-hypervisor -v --tdx firmware=${BIOS} --memory size=2G --cpus boot=1 --kernel ${KERNEL} --disk path=${GUEST_IMG} --cmdline "console=hvc0 root=/dev/vda3 rw"
+./cloud-hypervisor -v --tdx firmware=${BIOS} --memory size=2G --cpus boot=1 --kernel ${KERNEL} --disk path=${GUEST_IMG} --console tty --serial off --cmdline "console=hvc0 root=/dev/vda3 rw"
 ```
