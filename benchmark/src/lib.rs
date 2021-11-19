@@ -18,6 +18,10 @@ use scroll::Pread;
 #[global_allocator]
 pub static ALLOCATOR: MyHeap = MyHeap::empty();
 
+// stack guard is enabled and the stack needs add guard size
+pub const STACK_GUARD_PAGE_SIZE: u64 = 0x1000;
+pub const STACK_EXCEPTION_PAGE_SIZE: u64 = 0x1000;
+
 pub struct MyHeap {
     max_heap: usize,
     used_heap: usize,
@@ -64,6 +68,7 @@ unsafe impl GlobalAlloc for MyHeap {
 }
 
 pub struct BenchmarkContext {
+    memory_layout: RuntimeMemoryLayout,
     name: &'static str,
     start_timestamp: u64,
     end_timestamp: u64,
@@ -74,12 +79,18 @@ pub struct BenchmarkContext {
 impl BenchmarkContext {
     pub fn new(memory_layout: RuntimeMemoryLayout, name: &'static str) -> Self {
         BenchmarkContext {
+            memory_layout,
             name,
             start_timestamp: 0,
             end_timestamp: 0,
             max_stack: 0,
             max_heap: 0,
         }
+    }
+
+    fn runtime_stack_base(&self) -> usize {
+        (self.memory_layout.runtime_stack_base + STACK_GUARD_PAGE_SIZE + STACK_EXCEPTION_PAGE_SIZE)
+            as usize
     }
 
     pub fn bench_start(&mut self) {
@@ -90,8 +101,11 @@ impl BenchmarkContext {
         log::info!("rsp_start: {:x}\n", rsp);
         let stack_buffer = unsafe {
             core::slice::from_raw_parts_mut(
-                0x7F002000 as *const u8 as *mut u8,
-                rsp - 0x7F002000usize - 0x20usize,
+                self.runtime_stack_base() as *const u8 as *mut u8,
+                // Debug does not need to subtract stack,
+                // release needs to subtract some stack,
+                // which may be related to optimization
+                rsp - self.runtime_stack_base() - 0x8,
             )
         };
 
@@ -113,8 +127,11 @@ impl BenchmarkContext {
         log::info!("rsp_end: {:x}\n", rsp);
         let stack_buffer = unsafe {
             core::slice::from_raw_parts_mut(
-                0x7F002000 as *const u8 as *mut u8,
-                rsp - 0x7F002000usize - 0x20usize,
+                self.runtime_stack_base() as *const u8 as *mut u8,
+                // Debug does not need to subtract stack,
+                // release needs to subtract some stack,
+                // which may be related to optimization
+                rsp - self.runtime_stack_base() - 0x8,
             )
         };
 
