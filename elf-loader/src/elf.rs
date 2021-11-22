@@ -41,20 +41,27 @@ pub fn relocate_elf_with_per_program_header(
             if bottom > ph.p_vaddr {
                 bottom = ph.p_vaddr;
             }
-            if top < ph.p_vaddr + ph.p_memsz {
+            if top < ph.p_vaddr.checked_add(ph.p_memsz)? {
                 top = ph.p_vaddr + ph.p_memsz;
             }
         }
     }
 
+    bottom.checked_add(new_image_base as u64)?;
+    top.checked_add(new_image_base as u64)?;
     let mut bottom = bottom + new_image_base as u64;
     let mut top = top + new_image_base as u64;
     bottom = align_value(bottom, SIZE_4KB, true);
     top = align_value(top, SIZE_4KB, false);
-
+    top.checked_sub(bottom)?;
     // load per program header
     for ph in elf.program_headers() {
         if ph.p_type == PT_LOAD && ph.p_memsz != 0 {
+            if ph.p_offset.checked_add(ph.p_filesz)? > image.len() as u64
+                || ph.p_vaddr.checked_add(ph.p_filesz)? > loaded_buffer.len() as u64
+            {
+                return None;
+            }
             let data_range = ph.p_offset as usize..(ph.p_offset + ph.p_filesz) as usize;
             let loaded_range = (ph.p_vaddr) as usize..(ph.p_vaddr + ph.p_filesz) as usize;
             loaded_buffer[loaded_range].copy_from_slice(&image[data_range]);
@@ -65,10 +72,9 @@ pub fn relocate_elf_with_per_program_header(
     for reloc in elf.relocations()? {
         if reloc.r_type() == R_X86_64_RELATIVE {
             let r_addend = reloc.r_addend;
-            let r_addend = r_addend;
             loaded_buffer
                 .pwrite::<u64>(
-                    new_image_base as u64 + r_addend as u64,
+                    new_image_base.checked_add(r_addend as usize)? as u64,
                     reloc.r_offset as usize,
                 )
                 .ok()?;
@@ -92,6 +98,7 @@ pub fn parse_init_array_section(image: &[u8]) -> Option<Range<usize>> {
 
     for sh in elf.section_headers() {
         if sh.sh_type == crate::elf64::SHT_INIT_ARRAY {
+            sh.sh_addr.checked_add(sh.sh_size)?;
             return Some(sh.vm_range());
         }
     }
@@ -104,6 +111,7 @@ pub fn parse_finit_array_section(image: &[u8]) -> Option<Range<usize>> {
 
     for sh in elf.section_headers() {
         if sh.sh_type == crate::elf64::SHT_FINI_ARRAY {
+            sh.sh_addr.checked_add(sh.sh_size)?;
             return Some(sh.vm_range());
         }
     }

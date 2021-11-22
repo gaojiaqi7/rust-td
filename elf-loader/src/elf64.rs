@@ -492,7 +492,7 @@ impl<'a> Iterator for ProgramHeaders<'a> {
 
         let current_bytes = &self.entries[offset..];
 
-        let obj = current_bytes.pread::<ProgramHeader>(0).unwrap();
+        let obj = current_bytes.pread::<ProgramHeader>(0).ok()?;
 
         self.index += 1;
         Some(obj)
@@ -558,7 +558,7 @@ impl<'a> Iterator for SectionHeaders<'a> {
 
         let current_bytes = &self.entries[offset..];
 
-        let obj = current_bytes.pread::<SectionHeader>(0).unwrap();
+        let obj = current_bytes.pread::<SectionHeader>(0).ok()?;
         self.index += 1;
         Some(obj)
     }
@@ -607,7 +607,7 @@ impl<'a> Iterator for Dyns<'a> {
 
         let current_bytes = &self.entries[offset..];
 
-        let obj = current_bytes.pread::<Dyn>(0).unwrap();
+        let obj = current_bytes.pread::<Dyn>(0).ok()?;
 
         self.index += 1;
         Some(obj)
@@ -699,10 +699,10 @@ impl<'a> Iterator for Relocs<'a> {
             return None;
         }
         let offset = self.index * self.relaent;
-
+        self.entries.len().checked_sub(offset)?;
         let current_bytes = &self.entries[offset..];
 
-        let obj = current_bytes.pread::<Rela>(0).unwrap();
+        let obj = current_bytes.pread::<Rela>(0).ok()?;
 
         self.index += 1;
         Some(obj)
@@ -717,6 +717,9 @@ pub struct Elf<'a> {
 impl<'a> Elf<'a> {
     pub fn parse(elf_bin: &'a [u8]) -> Option<Self> {
         let header = elf_bin.pread::<ELFHeader64>(0).ok()?;
+        if header.e_phoff > elf_bin.len() as u64 || header.e_shoff > elf_bin.len() as u64 {
+            return None;
+        }
         Some(Elf {
             header,
             bytes: elf_bin,
@@ -728,6 +731,9 @@ impl<'a> Elf<'a> {
         let mut dynamic_info = DynamicInfo::default();
         for header in self.program_headers() {
             if header.p_type == PT_DYNAMIC {
+                if header.p_offset.checked_add(header.p_filesz)? > elf_bin.len() as u64 {
+                    return None;
+                }
                 let dyns = Dyns::parse(
                     &elf_bin[header.p_offset as usize..],
                     header.p_filesz as usize,
@@ -765,7 +771,7 @@ impl<'a> Elf<'a> {
         let elf_bin = self.bytes;
 
         let dynamic_info = self.dynamic_info()?;
-
+        elf_bin.len().checked_sub(dynamic_info.rela)?;
         let relocs = Relocs::parse(
             &elf_bin[dynamic_info.rela..],
             dynamic_info.relacount,
