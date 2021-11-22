@@ -7,6 +7,7 @@ members = [
      "rust-td-tool",
      "benchmark",
      "fuzzing/fuzz_pe_loader",
+     "fuzzing/fuzz_elf_loader",
      "no_std_test"
      ]
 

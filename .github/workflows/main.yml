@@ -15,7 +15,7 @@ env:
 
 jobs:
   system_compile:
-    name: Compile the find.bin file
+    name: Compile the final.bin file
     runs-on: ${{ matrix.host_os }}
     timeout-minutes: 30
 
