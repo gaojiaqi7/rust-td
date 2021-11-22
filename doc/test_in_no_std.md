@@ -31,7 +31,7 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
             *byte = 0x90;
         }
     }
-    
+
     #[cfg(test)]
     test_main();
 
@@ -87,7 +87,7 @@ ktest = "xtest --target x86_64-custom.json"
 ##### run rust-td-payload test
 
 ```
-cd rust-td-payload 
+cd rust-td-payload
 cargo ktest
 ```
 
@@ -95,6 +95,6 @@ cargo ktest
 
 #### reference
 
-​	[bootloder](https://github.com/rust-osdev/bootloader)
+​	[bootloader](https://github.com/rust-osdev/bootloader)
 
 ​	[examples_test_framework](https://github.com/rust-osdev/bootloader/tree/main/examples/test_framework)

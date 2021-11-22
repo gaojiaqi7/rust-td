@@ -2,7 +2,7 @@
 ; @file
 ; Emits Page Tables for 1:1 mapping of the addresses 0 - 0x100000000 (4GB)
 ;
-; Copyright (c) 2008 - 2014, Intel Corporation. All rights reserved.<BR>
+; Copyright (c) 2021, Intel Corporation. All rights reserved.<BR>
 ; SPDX-License-Identifier: BSD-2-Clause-Patent
 ;
 ;------------------------------------------------------------------------------

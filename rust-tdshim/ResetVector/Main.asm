@@ -2,7 +2,7 @@
 ; @file
 ; Main routine of the pre-SEC code up through the jump into SEC
 ;
-; Copyright (c) 2008 - 2020, Intel Corporation. All rights reserved.<BR>
+; Copyright (c) 2021, Intel Corporation. All rights reserved.<BR>
 ; SPDX-License-Identifier: BSD-2-Clause-Patent
 ;
 ;------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ Main32:
 
     ;
     ; The SEC entry point
-    
+
     mov edi, dword [TD_SHIM_RESET_SEC_CORE_BASE_ADDR]
     mov ebx, dword [TD_SHIM_RESET_SEC_CORE_SIZE_ADDR]
     mov esi, dword [TD_SHIM_RESET_SEC_CORE_ENTRY_POINT_ADDR]

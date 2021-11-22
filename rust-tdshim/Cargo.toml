@@ -1,10 +1,6 @@
 [package]
 name = "rust-tdshim"
 version = "0.1.0"
-authors = [
-    "Jiewen Yao <jiewen.yao@intel.com>",
-    "Xiaoyu Lu <xiaoyux.lu@intel.com>"
-    ]
 edition = "2018"
 
 # add build process

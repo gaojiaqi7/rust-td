@@ -1,3 +1,7 @@
+// Copyright (c) 2021 Intel Corporation
+//
+// SPDX-License-Identifier: BSD-2-Clause-Patent
+
 use rust_td_layout::{build_time, runtime, RuntimeMemoryLayout};
 
 const MAX_E820_ENTRY: usize = 128;
@@ -38,12 +42,18 @@ pub struct E820Table {
     size: usize,
 }
 
-impl E820Table {
-    pub fn new() -> Self {
-        E820Table {
+impl Default for E820Table {
+    fn default() -> Self {
+        Self {
             entries: [E820Entry::default(); MAX_E820_ENTRY],
             size: 0,
         }
+    }
+}
+
+impl E820Table {
+    pub fn new() -> Self {
+        Self::default()
     }
     pub fn add_range(&mut self, r#type: E820Type, start: u64, length: u64) {
         if self.size == MAX_E820_ENTRY {

@@ -1,26 +1,13 @@
-# rust-td
+# td-shim
+Confidential Containers Shim Firmware
 
-A demo for pure rust based td-shim.
+## Feature Introduction
 
-It is derived from https://github.com/jyao1/edk2-staging/tree/TdShim/TdShimPkg.
+This is a Shim Firmware to support [Intel TDX](https://software.intel.com/content/www/us/en/develop/articles/intel-trust-domain-extensions.html).
 
-## tdx-tdcall
+The API specification is at [td-shim spec](https://github.com/confidential-containers/td-shim/blob/main/doc/tdshim_spec.md)
 
-tdx-tdcall impl two ways:
-
-you can edit Cargo.toml -> features -> default to enable or disable. See
-
-1. tdx call
-
-```
-default = []
-```
-
-2. tdx emulate
-
-```
-default = ["use_tdx_emulation"]
-```
+The design is at [rust-td design](https://github.com/confidential-containers/td-shim/blob/main/doc/design.md)
 
 ## How to build
 
@@ -30,7 +17,7 @@ default = ["use_tdx_emulation"]
 
 please use nightly-2021-08-20.
 
-1.1. Intall xbuild
+1.1. Install xbuild
 
 ```
 cargo install cargo-xbuild
@@ -52,10 +39,6 @@ Set env:
 set CC=clang
 set AR=llvm-ar
 ```
-
-## To boot kernel:
-
-See [kernel-direct-boot.md](kernel-direct-boot.md)
 
 ### Build TdShim
 ```
@@ -92,4 +75,4 @@ REF: https://github.com/tianocore/edk2-staging/tree/TDVF
 3.  when you run ```git commit```, pre-commit will do check-code things.
 
 ## Known limitation
-This package is only the sample code to show the concept. It does not have a full validation such as robustness functional test and fuzzing test. It does not meet the production quality yet. Any codes including the API definition, the libary and the drivers are subject to change.
+This package is only the sample code to show the concept. It does not have a full validation such as robustness functional test and fuzzing test. It does not meet the production quality yet. Any codes including the API definition, the library and the drivers are subject to change.

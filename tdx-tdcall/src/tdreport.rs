@@ -1,6 +1,7 @@
 // Copyright (c) 2021 Intel Corporation
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
+
 extern crate alloc;
 use core::fmt;
 use lazy_static::lazy_static;

@@ -12,6 +12,7 @@ pub mod mailbox;
 pub mod metadata;
 pub mod runtime;
 
+#[derive(Default)]
 pub struct RuntimeMemoryLayout {
     pub runtime_page_table_base: u64,
     pub runtime_payload_param_base: u64,

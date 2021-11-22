@@ -2,7 +2,7 @@
 ; @file
 ; Port 0x80 debug support macros
 ;
-; Copyright (c) 2009, Intel Corporation. All rights reserved.<BR>
+; Copyright (c) 2021, Intel Corporation. All rights reserved.<BR>
 ; SPDX-License-Identifier: BSD-2-Clause-Patent
 ;
 ;------------------------------------------------------------------------------

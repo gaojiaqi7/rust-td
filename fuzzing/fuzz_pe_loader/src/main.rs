@@ -1,3 +1,7 @@
+// Copyright (c) 2021 Intel Corporation
+//
+// SPDX-License-Identifier: BSD-2-Clause-Patent
+
 use pe_loader::pe::{is_pe, relocate_pe_mem_with_per_sections, Sections};
 use scroll::Pread;
 

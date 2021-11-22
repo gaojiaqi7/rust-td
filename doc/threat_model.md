@@ -45,7 +45,7 @@ reference:
 
 [Host Firmware Speculative Execution Side Channel Mitigation](https://www.intel.com/content/www/us/en/developer/articles/technical/software-security-guidance/technical-documentation/host-firmware-speculative-side-channel-mitigation.html)
 
-C-3. The TD SHALL follow best practice on cryptogaphic implementation.
+C-3. The TD SHALL follow best practice on cryptographic implementation.
 
 reference:
 
@@ -72,7 +72,7 @@ T-2. The TD MAY use secure boot.
 If secure boot is used, the component:(n) SHALL verify the component:(n+1), before pass control to component:(n+1).
 The trust anchor of the verification SHALL be measured.
 
-The TD SHALL consult the certificate revocation list (CRL) during verification, if CRL is present. 
+The TD SHALL consult the certificate revocation list (CRL) during verification, if CRL is present.
 The CRL SHALL be measured.
 
 The TD SHALL consider the secure version number (SVN) during verification, if SVN is present.

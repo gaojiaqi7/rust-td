@@ -67,24 +67,22 @@ unsafe impl GlobalAlloc for MyHeap {
     }
 }
 
-pub struct BenchmarkContext {
+#[derive(Default)]
+pub struct BenchmarkContext<'a> {
     memory_layout: RuntimeMemoryLayout,
-    name: &'static str,
+    name: &'a str,
     start_timestamp: u64,
     end_timestamp: u64,
     max_stack: usize,
     max_heap: usize,
 }
 
-impl BenchmarkContext {
-    pub fn new(memory_layout: RuntimeMemoryLayout, name: &'static str) -> Self {
+impl<'a> BenchmarkContext<'a> {
+    pub fn new(memory_layout: RuntimeMemoryLayout, name: &'a str) -> Self {
         BenchmarkContext {
             memory_layout,
             name,
-            start_timestamp: 0,
-            end_timestamp: 0,
-            max_stack: 0,
-            max_heap: 0,
+            ..Default::default()
         }
     }
 
@@ -138,7 +136,7 @@ impl BenchmarkContext {
         let max_stack_used = detect_stack_in_buffer(stack_buffer, 0x5A5A5A5A5A5A5A5Au64).unwrap();
         self.max_stack = max_stack_used;
 
-        log::info!(" detla: {}\n", self.end_timestamp - self.start_timestamp);
+        log::info!(" delta: {}\n", self.end_timestamp - self.start_timestamp);
         log::info!("detect max stack size is: 0x{:0x}\n", self.max_stack);
         log::info!("detect max heap size is: 0x{:0x}\n\n", ALLOCATOR.max_heap);
     }

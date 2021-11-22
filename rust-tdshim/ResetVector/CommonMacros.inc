@@ -2,7 +2,7 @@
 ; @file
 ; Common macros used in the ResetVector VTF module.
 ;
-; Copyright (c) 2008, Intel Corporation. All rights reserved.<BR>
+; Copyright (c) 2021, Intel Corporation. All rights reserved.<BR>
 ; SPDX-License-Identifier: BSD-2-Clause-Patent
 ;
 ;------------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 #!/bin/bash
+
 now=$(date +"%m%d_%H%M")
 LOGFILE=stdout.${now}.log
 

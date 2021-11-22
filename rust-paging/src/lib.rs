@@ -1,6 +1,7 @@
 // Copyright (c) 2021 Intel Corporation
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
+
 #![no_std]
 #![allow(unused)]
 #![no_main]

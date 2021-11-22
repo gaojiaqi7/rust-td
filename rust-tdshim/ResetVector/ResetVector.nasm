@@ -2,7 +2,7 @@
 ; @file
 ; This file includes all other code files to assemble the reset vector code
 ;
-; Copyright (c) 2008 - 2013, Intel Corporation. All rights reserved.<BR>
+; Copyright (c) 2021, Intel Corporation. All rights reserved.<BR>
 ; SPDX-License-Identifier: BSD-2-Clause-Patent
 ;
 ;------------------------------------------------------------------------------

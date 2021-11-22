@@ -2,7 +2,7 @@
 ; @file
 ; Validates the Boot Firmware Volume (BFV) base address
 ;
-; Copyright (c) 2008 - 2009, Intel Corporation. All rights reserved.<BR>
+; Copyright (c) 2021, Intel Corporation. All rights reserved.<BR>
 ; SPDX-License-Identifier: BSD-2-Clause-Patent
 ;
 ;------------------------------------------------------------------------------
