@@ -165,6 +165,9 @@ pub extern "win64" fn _start(
     tdx_exception::setup_exception_handlers();
     log::info!("setup_exception_handlers done\n");
 
+    //Init temp heap
+    heap::init();
+
     let hob_list = memslice::get_mem_slice(memslice::SliceType::ShimHob);
     let hob_size = hob_lib::get_hob_total_size(hob_list).unwrap();
     let hob_list = &hob_list[0..hob_size];
@@ -199,6 +202,7 @@ pub extern "win64" fn _start(
                 match resource_hob.resource_type {
                     RESOURCE_SYSTEM_MEMORY => {
                         mp::mp_accept_memory_resource_range(
+                            td_info.num_vcpus,
                             resource_hob.physical_start,
                             resource_hob.resource_length,
                         );
@@ -224,7 +228,6 @@ pub extern "win64" fn _start(
     let td_event_log_base = runtime_memory_layout.runtime_event_log_base;
     let td_acpi_base = runtime_memory_layout.runtime_acpi_base;
 
-    heap::init();
     paging::init();
 
     let mut td_event_log = tcg::TdEventLog::init(memslice::get_dynamic_mem_slice_mut(

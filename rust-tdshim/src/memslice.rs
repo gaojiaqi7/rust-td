@@ -9,6 +9,7 @@ use rust_td_layout::runtime::*;
 pub enum SliceType {
     ShimHob,
     ShimPayload,
+    MailBox,
     Payload,
     PayloadHob,
     EventLog,
@@ -47,6 +48,10 @@ pub fn get_mem_slice_mut<'a>(t: SliceType) -> &'a mut [u8] {
             SliceType::Payload => core::slice::from_raw_parts_mut(
                 TD_PAYLOAD_BASE as *const u8 as *mut u8,
                 TD_PAYLOAD_SIZE,
+            ),
+            SliceType::MailBox => core::slice::from_raw_parts_mut(
+                TD_SHIM_MAILBOX_BASE as *const u8 as *mut u8,
+                TD_SHIM_MAILBOX_SIZE as usize,
             ),
             _ => {
                 panic!("not support")

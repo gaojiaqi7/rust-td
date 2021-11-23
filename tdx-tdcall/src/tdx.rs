@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 
+use core::result::Result;
 use core::sync::atomic::{fence, Ordering};
 use lazy_static::lazy_static;
 
@@ -37,6 +38,7 @@ const IO_WRITE: u64 = 1;
 
 pub const TDX_EXIT_REASON_SUCCESS: u64 = 0;
 const TDX_EXIT_REASON_PAGE_ALREADY_ACCEPTED: u64 = 0x00000B0A00000000;
+const TDX_EXIT_REASON_PAGE_SIZE_MISMATCH: u64 = 0xC0000B0B00000000;
 
 pub const EXIT_REASON_CPUID: u32 = 10;
 pub const EXIT_REASON_HLT: u32 = 12;
@@ -87,6 +89,14 @@ pub struct TdVeInfoReturnData {
     pub exit_instruction_length: u32,
     pub exit_instruction_info: u32,
     pub rsvd1: u64,
+}
+
+#[derive(PartialEq)]
+pub enum TdCallError {
+    TdxExitReasonPageAlreadyAccepted,
+    TdxExitReasonPageSizeMismatch,
+    TdxExitReasonOperandInvalid,
+    TdxExitReasonOperandBusy,
 }
 
 pub fn tdvmcall_halt() {
@@ -190,15 +200,18 @@ pub fn tdcall_get_ve_info(ve_info: &mut TdVeInfoReturnData) {
     }
 }
 
-pub fn tdcall_accept_page(address: u64) {
+pub fn tdcall_accept_page(address: u64) -> Result<(), TdCallError> {
     let ret = unsafe { td_call(TDCALL_TDACCEPTPAGE, address, 0, 0, 0) };
     if ret != TDX_EXIT_REASON_SUCCESS {
         if (ret & !0xffu64) == TDX_EXIT_REASON_PAGE_ALREADY_ACCEPTED {
-            // already accepted
+            return Err(TdCallError::TdxExitReasonPageAlreadyAccepted);
+        } else if (ret & !0xffu64) == TDX_EXIT_REASON_PAGE_SIZE_MISMATCH {
+            return Err(TdCallError::TdxExitReasonPageSizeMismatch);
         } else {
             tdvmcall_halt();
         }
     }
+    Ok(())
 }
 
 pub fn tdvmcall_mmio_write<T: Sized>(address: *const T, value: T) {

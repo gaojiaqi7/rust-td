@@ -270,78 +270,41 @@ ParkAp:
     cmp     eax, MpProtectedModeWakeupCommandWakeup
     je      .do_wakeup
 
-    cmp     eax, MpProtectedModeWakeupCommandAcceptPages
-    jne     .check_command
+    ;
+    ; Check if the AP is available
+    cmp     eax, MpProtectedModeWakeupCommandCheck
+    je      .check_avalible
 
-    ; Get PhysicalAddress and AcceptSize
-    mov     rcx, [rsp + AcceptPageArgsPhysicalStart]
-    mov     rbx, [rsp + AcceptPageArgsAcceptSize]
-    ;
-    ; PhysicalAddress += (CpuId * AcceptSize)
-    mov     eax, ebp
-    mul     ebx
-    add     rcx, rax
+    cmp     eax, MpProtectedModeWakeupCommandAssignWork
+    je      .set_ap_stack
 
-.do_accept_next_range:
+    jmp    .check_command
 
+.check_avalible
     ;
-    ; Make sure we don't accept page beyond ending page
-    ; This could happen is AcceptSize crosses the end of region
-    ;
-    ;while (PhysicalAddress < PhysicalEnd) {
-    cmp     rcx, [rsp + AcceptPageArgsPhysicalEnd ]
-    jge     .do_finish_command
+    ; Set the ApicId to be invalid to show the AP is available
+    mov     dword[rsp + ApicidOffset], MailboxApicIdInvalid
+    jmp     .check_command
 
+.set_ap_stack
     ;
-    ; Save starting address for this region
+    ; Set the ApicId to be invalid to show the AP has been waked up
+    mov     dword[rsp + ApicidOffset], MailboxApicIdInvalid
     ;
-    mov     r11, rcx
-
-    ; Size = MIN(AcceptSize, PhysicalEnd - PhysicalAddress);
-    mov     rax, [rsp + AcceptPageArgsPhysicalEnd]
-
-    sub     rax, rcx
-    cmp     rax, rbx
-    jge     .do_accept_loop
-    mov     rbx, rax
-
-.do_accept_loop:
-
+    ; Read the function address which will be called
+    mov     eax, dword[rsp + WakeupVectorOffset]
     ;
-    ; Accept address in rcx
+    ; Read the stack address from arguments and set the rsp
+    mov     rsp, [rsp + ApWorkingStackStart]
     ;
-    mov     rax, TDCALL_TDACCEPTPAGE
-    tdcall
-
-    ;
-    ; Keep track of how many accepts per cpu
-    ;
-    mov     rdx, [rsp + AcceptPageArgsTallies]
-    inc     dword [rbp * 4 + rdx]
-    ;
-    ; Reduce accept size by a page, and increment address
-    ;
-    sub     rbx, 1000h
-    add     rcx, 1000h
-
-    ;
-    ; We may be given multiple pages to accept, make sure we
-    ; aren't done
-    ;
-    test    rbx, rbx
-    jne     .do_accept_loop
-
-    ;
-    ; Restore address before, and then increment by stride (num-cpus * acceptsize)
-    ;
-    mov     rcx, r11
-    mov     eax, r8d
-    mov     rbx, [rsp + AcceptPageArgsAcceptSize]
-    mul     ebx
-    add     rcx, rax
-    jmp     .do_accept_next_range
+    ; CPU index as the first parameter
+    mov     ecx, r9d
+    call    rax
 
 .do_finish_command:
+    ;
+    ;Set rsp back to TD_MAILBOX_BASE
+    mov       rsp, TD_MAILBOX_BASE     ; base address
     mov       eax, 0FFFFFFFFh
     lock xadd dword [rsp + CpusExitingOffset], eax
     dec       eax

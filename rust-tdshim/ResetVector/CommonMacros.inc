@@ -35,10 +35,7 @@ WakeupVectorOffset                        equ       08h
 OSArgsOffset                              equ       10h
 FirmwareArgsOffset                        equ       800h
 WakeupArgsRelocatedMailBox                equ       800h
-AcceptPageArgsPhysicalStart               equ       800h
-AcceptPageArgsPhysicalEnd                 equ       808h
-AcceptPageArgsAcceptSize                  equ       810h
-AcceptPageArgsTallies                     equ       818h
+ApWorkingStackStart                       equ       800h
 CpuArrivalOffset                          equ       900h
 CpusExitingOffset                         equ       0a00h
 TalliesOffset                             equ       0a08h
@@ -46,7 +43,8 @@ TalliesOffset                             equ       0a08h
 MpProtectedModeWakeupCommandNoop          equ       0
 MpProtectedModeWakeupCommandWakeup        equ       1
 MpProtectedModeWakeupCommandSleep         equ       2
-MpProtectedModeWakeupCommandAcceptPages   equ       3
+MpProtectedModeWakeupCommandAssignWork    equ       3
+MpProtectedModeWakeupCommandCheck         equ       4
 
 MailboxApicIdInvalid                      equ       0xffffffff
 MailboxApicidBroadcast                    equ       0xfffffffe
