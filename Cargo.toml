@@ -5,6 +5,7 @@ members = [
     "rust-tdshim",
      "rust-td-payload",
      "rust-td-tool",
+     "rust-quote-payload",
      "benchmark",
      "fuzzing/fuzz_pe_loader",
      "fuzzing/fuzz_elf_loader",
